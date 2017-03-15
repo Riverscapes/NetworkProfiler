@@ -5,7 +5,7 @@
     <content url="jar://$APPLICATION_HOME_DIR$/debug-eggs/pycharm-debug.egg!/">
       <sourceFolder url="jar://$APPLICATION_HOME_DIR$/debug-eggs/pycharm-debug.egg!/" isTestSource="false" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 2.7.10 (/usr/bin/python) QGIS" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TemplatesService">

@@ -28,7 +28,7 @@
 import os
 if 'DEBUG_PLUGIN' in os.environ and os.environ['DEBUG_PLUGIN'] == "NetworkProfiler":
     import pydevd
-    pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
+    pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True, suspend=False)
 ######################### /REMOTE DEBUG #########################
 
 # noinspection PyPep8Naming

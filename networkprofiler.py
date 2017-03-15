@@ -48,7 +48,6 @@ class networkProfiler:
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
             self.plugin_dir,
-            'i18n',
             'networkProfiler_{}.qm'.format(locale))
 
         if os.path.exists(locale_path):

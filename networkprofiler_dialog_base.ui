@@ -6,116 +6,30 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>507</width>
-    <height>322</height>
+    <width>458</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Network Profiler</string>
   </property>
-  <widget class="QDialogButtonBox" name="cmdButtons">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>280</y>
-     <width>341</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
-  </widget>
-  <widget class="QGroupBox" name="groupBox">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>10</y>
-     <width>471</width>
-     <height>231</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>River Network</string>
-   </property>
-   <widget class="QWidget" name="">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>20</y>
-      <width>451</width>
-      <height>25</height>
-     </rect>
-    </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="lblNetwork">
        <property name="text">
-        <string>ShapeFile:</string>
+        <string>Layer:</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="txtNetwork"/>
-     </item>
-     <item>
-      <widget class="QPushButton" name="cmdBrowseNetwork">
-       <property name="text">
-        <string>Browse</string>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="ctlLayer"/>
      </item>
     </layout>
-   </widget>
-   <widget class="QLabel" name="lblFields">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>100</y>
-      <width>46</width>
-      <height>13</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Fields:</string>
-    </property>
-   </widget>
-   <widget class="QScrollArea" name="scrollArea">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>120</y>
-      <width>451</width>
-      <height>101</height>
-     </rect>
-    </property>
-    <property name="widgetResizable">
-     <bool>true</bool>
-    </property>
-    <widget class="QWidget" name="scrollAreaWidgetContents">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>449</width>
-       <height>99</height>
-      </rect>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QWidget" name="">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>60</y>
-      <width>213</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QLabel" name="lblReachID">
        <property name="text">
@@ -124,61 +38,84 @@
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="txtReachID"/>
+      <widget class="QLineEdit" name="ctlReachInt"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cmdGetReachFromMap">
+       <property name="text">
+        <string>From Selection</string>
+       </property>
+      </widget>
      </item>
     </layout>
-   </widget>
-   <widget class="QComboBox" name="cboNetwork">
-    <property name="geometry">
-     <rect>
-      <x>290</x>
-      <y>60</y>
-      <width>161</width>
-      <height>22</height>
-     </rect>
-    </property>
-   </widget>
-  </widget>
-  <widget class="QWidget" name="">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>250</y>
-     <width>481</width>
-     <height>25</height>
-    </rect>
-   </property>
-   <layout class="QHBoxLayout" name="horizontalLayout_2">
-    <item>
-     <widget class="QLabel" name="lblCSV">
-      <property name="text">
-       <string>CSV output:</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLineEdit" name="txtCSVOutput"/>
-    </item>
-    <item>
-     <widget class="QPushButton" name="cmdBrowseCSV">
-      <property name="text">
-       <string>Browse</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <zorder>cmdButtons</zorder>
-  <zorder>lblNetwork</zorder>
-  <zorder>txtNetwork</zorder>
-  <zorder>cmdBrowseNetwork</zorder>
-  <zorder>lblCSV</zorder>
-  <zorder>txtCSVOutput</zorder>
-  <zorder>cmdBrowseCSV</zorder>
-  <zorder>groupBox</zorder>
-  <zorder>lblNetwork</zorder>
-  <zorder>txtReachID</zorder>
-  <zorder>lblReachID</zorder>
+   </item>
+   <item>
+    <widget class="QLabel" name="lblWarning">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QLabel" name="lblFields">
+       <property name="text">
+        <string>Fields:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QScrollArea" name="scrollArea">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>430</width>
+          <height>242</height>
+         </rect>
+        </property>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QLineEdit" name="txtCSVOutput"/>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblCSV">
+       <property name="text">
+        <string>CSV output:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cmdBrowseCSV">
+       <property name="text">
+        <string>Browse</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="cmdButtons">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
