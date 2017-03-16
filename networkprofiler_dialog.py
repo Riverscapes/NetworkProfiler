@@ -52,7 +52,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Map State objects:
         self.mapCanvas = qgis.utils.iface.mapCanvas()
-        self.mapLayers = self.mapCanvas.layers()
         self.mapVectorLayers = []
         self.mapSelectedObjects = []
 
@@ -62,8 +61,12 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.appSelectedFields = []
 
         # Hook an event into the selection changed event to tell us if we can grab our object or not
-        self.mapCanvas.selectionChanged.connect(self.handlerLayerChange)
-        self.mapCanvas.layersChanged.connect(self.handlerSelectionChange)
+        self.mapCanvas.layersChanged.connect(self.handlerLayerChange)
+        self.mapCanvas.selectionChanged.connect(self.handlerSelectionChange)
+
+        # Hook in a couple of control events for good measure
+        self.ctlLayer.currentIndexChanged.connect(self.ctlLayerChange)
+        self.ctlIDField.currentIndexChanged.connect(self.ctlIDFieldChange)
 
         # Set up our button events
         self.cmdBrowseCSV.clicked.connect(lambda: self.save_csv_dialog(self.txtCSVOutput))
@@ -77,19 +80,10 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def showEvent(self, event):
         super(networkProfilerDialog, self).showEvent(event)
         # Trigger a recalc of everything the first time
+        # Now autopopulate values if we can
         self.handlerLayerChange()
         self.handlerSelectionChange()
-        self.handlerAppChange()
-        # Now autopopulate values if we can
         self.autoPopulate()
-
-    def autoPopulate(self):
-        """
-        This is the magic function that pulls values from the map selection
-        :return:
-        """
-        self.setAppVectorLayerFromMap()
-        self.recalcReachID()
 
 
     def RunAction(self, event):
@@ -102,7 +96,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         selectedPath = selectedLayer.dataProvider().dataSourceUri().split('|')[0]
         theProfile = Profile(selectedPath, int(self.ctlReachInt.text()))
         theProfile.writeCSV(self.txtCSVOutput.text())
-
 
     def setLabelMsg(self, text="", color='black'):
         self.lblWarning.setText(text)
@@ -125,8 +118,10 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
             # Populate the id fields
             self.ctlIDField.clear()
+            self.ctlIDField.currentIndexChanged.disconnect(self.ctlIDFieldChange)
             for field in selLayerObj['idFields']:
                 self.ctlIDField.addItem(field.name(), field)
+            self.ctlIDField.currentIndexChanged.connect(self.ctlIDFieldChange)
 
             # Populate the list of fields to use
             self.lstFields.clear()
@@ -144,9 +139,14 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.lstFields.setEnabled(False)
 
     def recalcVectorLayers(self):
+        """
+        Rebuild the vector layers combo box and reset the selected item if necessary
+        """
         self.ctlLayer.clear()
+        self.ctlLayer.currentIndexChanged.disconnect(self.ctlLayerChange)
         for layerObj in self.mapVectorLayers:
             self.ctlLayer.addItem(layerObj['layer'].name(), layerObj['layer'])
+        self.ctlLayer.currentIndexChanged.connect(self.ctlLayerChange)
 
         idx = self.ctlLayer.currentIndex()
         if idx > 0:
@@ -155,14 +155,12 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         else:
             self.setAppVectorLayerFromMap()
 
+
     def setAppVectorLayerFromMap(self):
         """
         Set the current map layer in the dropdown from whatever layer is selected on the map
-        :return:
         """
         currLayer = self.mapCanvas.currentLayer()
-
-        # TODO: There must be a better way to do thisd but
         selMapLayerIndex = self.ctlLayer.findData(currLayer)
 
         if selMapLayerIndex > -1:
@@ -172,8 +170,10 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.appSelectedLayer = self.ctlLayer.itemData(selMapLayerIndex)
 
     def getMapVectorLayerFields(self):
-        # Now just get a list of fields for each layer and identify the int fields
-        # as possible ID fields
+        """
+        Now just get a list of fields for each layer and identify the int fields
+        as possible ID fields
+        """
         for layerObj in self.mapVectorLayers:
             allfields = []
             intfields = []
@@ -184,16 +184,21 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             layerObj['fields'] = allfields
             layerObj['idFields'] = intfields
 
+    def recalcOkButton(self):
+        print "ok"
+
 
     def recalcReachID(self):
-        # Set the current reach ID
+        """
+        Set the reach ID field in the UI
+        """
         if len(self.mapSelectedObjects) == 1:
-            # TODO: BASE THIS ON THE ID SELECTEd
             selectedItem = self.mapSelectedObjects[0]
-            selectedindex = self.ctlLayer.findData(selectedItem[1])
-            if selectedindex >= 0:
-                self.ctlLayer.setCurrentIndex(selectedindex)
-            self.txtReachID.setText(str(selectedItem[0].id()))
+
+            idx = self.ctlIDField.currentIndex()
+            if idx > -1:
+                fieldname = self.ctlIDField.itemData(idx).name()
+                self.txtReachID.setText(str(selectedItem[0].attribute(fieldname)))
 
     def recalcGrabButton(self):
         """
@@ -218,31 +223,48 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         1. the layer changes
         2. the selection changes
         3. the app changes
+
+    These methods should be REALLY simple. No logic at all please.
     """
     def handlerLayerChange(self):
         if self.isVisible():
             # Get the data from the maps
             self.getMapVectorLayers()
             self.getMapVectorLayerFields()
+
             # Now repopulate the dropdowns
             self.recalcVectorLayers()
-            self.recalcVectorLayerFields()
 
     def handlerSelectionChange(self):
         if self.isVisible():
             self.getSelectedMapObjects()
+            self.recalcGrabButton()
 
-    def handlerAppChange(self):
+    def ctlLayerChange(self):
+        if self.isVisible():
+            self.recalcVectorLayerFields()
+            self.stateUpdate()
+
+    def ctlIDFieldChange(self):
+        if self.isVisible():
+            self.stateUpdate()
+
+    def autoPopulate(self):
         """
-        When something happens we want to recalculate the state of the application.
-        Careful when and how you call this to avoid infinite event loops
+        This is the magic function that pulls values from the map selection
         :return:
         """
-        # Now recalculate the form accordingly
+        self.setAppVectorLayerFromMap()
+        self.stateUpdate()
+
+    def stateUpdate(self):
+        """
+        This is the function that ripples through and updates the state of the UI
+        :return:
+        """
+        self.recalcReachID()
         self.recalcGrabButton()
-        self.recalcVectorLayers()
-        self.recalcVectorLayerFields()
-        print "recalc state"
+        self.recalcOkButton()
 
 
     """
@@ -256,10 +278,11 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.mapSelectedObjects = []
         for layer in self.mapVectorLayers:
             for feat in layer['layer'].selectedFeatures():
-                self.mapSelectedObjects.append((feat, layer))
+                self.mapSelectedObjects.append((feat, layer['layer']))
 
     def getMapVectorLayers(self):
-        self.mapVectorLayers = [{'layer':layer} for layer in self.mapLayers if type(layer) is QgsVectorLayer]
+
+        self.mapVectorLayers = [{'layer':layer} for layer in self.mapCanvas.layers() if type(layer) is QgsVectorLayer]
 
     """
     Dialog Boxes
@@ -278,3 +301,4 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def folder_browser(self, txtControl):
         foldername = QtGui.QFileDialog.getExistingDirectory(self, "Select Folder")
         txtControl.setText(foldername)
+
