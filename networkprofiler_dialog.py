@@ -24,6 +24,7 @@
 import os
 
 from PyQt4 import QtGui, uic
+from PyQt4.QtCore import QVariant
 from lib.profiler import Profile
 
 from qgis.core import *
@@ -44,85 +45,236 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+        # Keep this window on top so we can keep working on the map
+        self.window().setWindowFlags(self.window().windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+
+        # We need to separate the state handling here into: Map states and App States
+
+        # Map State objects:
+        self.mapCanvas = qgis.utils.iface.mapCanvas()
+        self.mapLayers = self.mapCanvas.layers()
+        self.mapVectorLayers = []
+        self.mapSelectedObjects = []
+
+        # Map States:
+        self.appSelectedLayer = None
+        self.appSelectedIDField = None
+        self.appSelectedFields = []
+
+        # Hook an event into the selection changed event to tell us if we can grab our object or not
+        self.mapCanvas.selectionChanged.connect(self.handlerLayerChange)
+        self.mapCanvas.layersChanged.connect(self.handlerSelectionChange)
+
+        # Set up our button events
+        self.cmdBrowseCSV.clicked.connect(lambda: self.save_csv_dialog(self.txtCSVOutput))
+        self.cmdGetReachFromMap.clicked.connect(self.autoPopulate)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.RunAction)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
+
         # DEBUG: Just set some default values for now
         self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
 
-        self.cmdBrowseCSV.clicked.connect(lambda: self.save_csv_dialog(self.txtCSVOutput))
+    def showEvent(self, event):
+        super(networkProfilerDialog, self).showEvent(event)
+        # Trigger a recalc of everything the first time
+        self.handlerLayerChange()
+        self.handlerSelectionChange()
+        self.handlerAppChange()
+        # Now autopopulate values if we can
+        self.autoPopulate()
 
-        self.cmdGetReachFromMap.clicked.connect(self.manualGrabReach)
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.RunAction)
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
-        self.recalc_state()
+    def autoPopulate(self):
+        """
+        This is the magic function that pulls values from the map selection
+        :return:
+        """
+        self.setAppVectorLayerFromMap()
+        self.recalcReachID()
+
 
     def RunAction(self, event):
+        """
+        Here's where we call the actual tool
+        :param event:
+        :return:
+        """
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
         selectedPath = selectedLayer.dataProvider().dataSourceUri().split('|')[0]
         theProfile = Profile(selectedPath, int(self.ctlReachInt.text()))
         theProfile.writeCSV(self.txtCSVOutput.text())
 
-    def updateLayerCombo(self):
-        for layer in self.vectorLayers:
-            self.ctlLayer.addItem(layer.name(), layer)
-
-    def getSelectedReaches(self):
-        # TODO: Grab the currently selected Reach
-        self.selectedReaches = []
-        for layer in self.vectorLayers:
-            for feat in layer.selectedFeatures():
-                self.selectedReaches.append((feat, layer))
-
-        # We only want to do the work if there's exactly one reach selected
-        if len(self.selectedReaches) == 1:
-            selectedItem = self.selectedReaches[0]
-            selectedindex = self.ctlLayer.findData(selectedItem[1])
-            if selectedindex >= 0:
-                self.ctlLayer.setCurrentIndex(selectedindex)
-            self.ctlReachInt.setText(str(selectedItem[0].id()))
-
-    def manualGrabReach(self):
-        # This function just gives a little more context to why things aren't working.
-        self.getSelectedReaches()
-        if len(self.selectedReaches) > 1:
-            self.setLabelMsg("You have {} features selected. You must only select one.".format(len(self.selectedReaches)), "red")
-        elif len(self.selectedReaches) == 0:
-            self.setLabelMsg("You have 0 features selected. You must only select at least one.".format(len(self.selectedReaches)), "red")
-
-    def save_csv_dialog(self, txtControl):
-        filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "", "CSV File (*.csv);;All files (*)")
-        txtControl.setText(filename)
-        self.recalc_state()
-
-    def existing_shp_browser(self, txtControl):
-        filename = QtGui.QFileDialog.getOpenFileName(self, "Open file", "", "Shp File (*.shp);;All files (*)")
-        txtControl.setText(filename)
-        self.recalc_state()
-
-    def folder_browser(self, txtControl):
-        foldername = QtGui.QFileDialog.getExistingDirectory(self, "Select Folder")
-        txtControl.setText(foldername)
-        self.recalc_state()
 
     def setLabelMsg(self, text="", color='black'):
         self.lblWarning.setText(text)
         self.lblWarning.setStyleSheet('QLabel { color: ' + color + ' }')
 
+    def recalcVectorLayerFields(self):
+        """
+        Get current layer index and then repopulate the dropdowns accordingly
+        :return:
+        """
+        selLayerData = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
+        selLayerObj = None
+        for obj in self.mapVectorLayers:
+            if selLayerData == obj['layer']:
+                selLayerObj = obj
 
-    def recalc_state(self):
+        if selLayerObj is not None:
+            self.ctlIDField.setEnabled(True)
+            self.lstFields.setEnabled(True)
+
+            # Populate the id fields
+            self.ctlIDField.clear()
+            for field in selLayerObj['idFields']:
+                self.ctlIDField.addItem(field.name(), field)
+
+            # Populate the list of fields to use
+            self.lstFields.clear()
+            for field in selLayerObj['fields']:
+                item = QtGui.QListWidgetItem(field.name())
+                self.lstFields.addItem(item)
+
+            # Select all by default.
+            if len(self.lstFields.selectedIndexes()) == 0:
+                self.lstFields.selectAll()
+
+        else:
+            self.ctlIDField.clear()
+            self.ctlIDField.setEnabled(False)
+            self.lstFields.setEnabled(False)
+
+    def recalcVectorLayers(self):
+        self.ctlLayer.clear()
+        for layerObj in self.mapVectorLayers:
+            self.ctlLayer.addItem(layerObj['layer'].name(), layerObj['layer'])
+
+        idx = self.ctlLayer.currentIndex()
+        if idx > 0:
+            self.appVectorLayer = self.ctlLayer.itemData(idx)
+            # if not in list then self.appVectorLayer = None
+        else:
+            self.setAppVectorLayerFromMap()
+
+    def setAppVectorLayerFromMap(self):
+        """
+        Set the current map layer in the dropdown from whatever layer is selected on the map
+        :return:
+        """
+        currLayer = self.mapCanvas.currentLayer()
+
+        # TODO: There must be a better way to do thisd but
+        selMapLayerIndex = self.ctlLayer.findData(currLayer)
+
+        if selMapLayerIndex > -1:
+            self.ctlLayer.setCurrentIndex(selMapLayerIndex)
+            # Set the selection independent of the control so if the map changes
+            # we'll retain it.
+            self.appSelectedLayer = self.ctlLayer.itemData(selMapLayerIndex)
+
+    def getMapVectorLayerFields(self):
+        # Now just get a list of fields for each layer and identify the int fields
+        # as possible ID fields
+        for layerObj in self.mapVectorLayers:
+            allfields = []
+            intfields = []
+            for field in layerObj['layer'].fields().toList():
+                allfields.append(field)
+                if field.type() == QVariant.Int:
+                    intfields.append(field)
+            layerObj['fields'] = allfields
+            layerObj['idFields'] = intfields
+
+
+    def recalcReachID(self):
+        # Set the current reach ID
+        if len(self.mapSelectedObjects) == 1:
+            # TODO: BASE THIS ON THE ID SELECTEd
+            selectedItem = self.mapSelectedObjects[0]
+            selectedindex = self.ctlLayer.findData(selectedItem[1])
+            if selectedindex >= 0:
+                self.ctlLayer.setCurrentIndex(selectedindex)
+            self.txtReachID.setText(str(selectedItem[0].id()))
+
+    def recalcGrabButton(self):
+        """
+        Set the Grab button to be disabled for all but one case
+        :return:
+        """
+        self.cmdGetReachFromMap.setEnabled(False)
+        if len(self.mapSelectedObjects) > 1:
+            self.setLabelMsg(
+                "You have {} features selected. To use the grab tool you must select only one.".format(
+                    len(self.mapSelectedObjects)))
+        elif len(self.mapSelectedObjects) == 0:
+            self.setLabelMsg("You have 0 features selected. To use the grab tool you must select at least one.".format(
+                len(self.mapSelectedObjects)))
+        else:
+            self.setLabelMsg("One reach selected. Use the Grab button to populate the fields above")
+            self.cmdGetReachFromMap.setEnabled(True)
+
+
+    """
+    There are 3 kinds of change events we care about:
+        1. the layer changes
+        2. the selection changes
+        3. the app changes
+    """
+    def handlerLayerChange(self):
+        if self.isVisible():
+            # Get the data from the maps
+            self.getMapVectorLayers()
+            self.getMapVectorLayerFields()
+            # Now repopulate the dropdowns
+            self.recalcVectorLayers()
+            self.recalcVectorLayerFields()
+
+    def handlerSelectionChange(self):
+        if self.isVisible():
+            self.getSelectedMapObjects()
+
+    def handlerAppChange(self):
         """
         When something happens we want to recalculate the state of the application.
         Careful when and how you call this to avoid infinite event loops
         :return:
         """
-        # Clear the warning label
-        self.setLabelMsg()
-        canvas = qgis.utils.iface.mapCanvas()
-        layers = canvas.layers()
-
-        # It's useful to have a list of vector layers for what comes next
-        self.vectorLayers = [layer for layer in layers if type(layer) is qgis._core.QgsVectorLayer]
-
-        # Here are the state recalc functions we're calling. Be careful not to cause infinite loops.
-        # These should not call recalc_state or each other
-        self.updateLayerCombo()
-        self.getSelectedReaches()
+        # Now recalculate the form accordingly
+        self.recalcGrabButton()
+        self.recalcVectorLayers()
+        self.recalcVectorLayerFields()
         print "recalc state"
+
+
+    """
+    MAP HELPERS
+    """
+    def getSelectedMapObjects(self):
+        """
+        Get a helpful list of selected objects on the map
+        :return:
+        """
+        self.mapSelectedObjects = []
+        for layer in self.mapVectorLayers:
+            for feat in layer['layer'].selectedFeatures():
+                self.mapSelectedObjects.append((feat, layer))
+
+    def getMapVectorLayers(self):
+        self.mapVectorLayers = [{'layer':layer} for layer in self.mapLayers if type(layer) is QgsVectorLayer]
+
+    """
+    Dialog Boxes
+    """
+
+    def save_csv_dialog(self, txtControl):
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "", "CSV File (*.csv);;All files (*)")
+        txtControl.setText(filename)
+        self.appChangeEvent()
+
+    def existing_shp_browser(self, txtControl):
+        filename = QtGui.QFileDialog.getOpenFileName(self, "Open file", "", "Shp File (*.shp);;All files (*)")
+        txtControl.setText(filename)
+        self.appChangeEvent()
+
+    def folder_browser(self, txtControl):
+        foldername = QtGui.QFileDialog.getExistingDirectory(self, "Select Folder")
+        txtControl.setText(foldername)

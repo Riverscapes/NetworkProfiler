@@ -5,7 +5,7 @@ import networkx as nx
 
 class Profile():
 
-    def __init__(self, shpfile, inID, outID=None):
+    def __init__(self, shpfile, idField, inID, outID=None):
         """
         Profile a network from startID to endID
 
