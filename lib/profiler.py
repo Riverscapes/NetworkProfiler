@@ -23,7 +23,7 @@ class Profile():
         # We need to open the shapefile first:
         log.info("Opening shapefile...")
         self.network = Shapefile(shpfile)
-        self.idfield = self.network.getIDField()
+
         # Parse the network
         try:
             log.info("parsing shapefile into network...")
@@ -33,13 +33,13 @@ class Profile():
             log.error("Error parsing network", e)
         log = Logger("Main")
 
-        startNode = self.findnodewithID(G, inID, self.idfield)
+        startNode = self.findnodewithID(G, inID, idField)
 
         if not startNode:
             raise Exception("Could not find start ID: {} in network.".format(inID))
 
         if outID:
-            endNode = self.findnodewithID(G, outID, self.idfield)
+            endNode = self.findnodewithID(G, outID, idField)
             if not endNode:
                 raise Exception("Could not find end ID: {} in network.".format(outID))
             # Make a depth-first tree from the first headwater we find
@@ -61,7 +61,7 @@ class Profile():
         cummulativelength = 0
         for edge in self.path_edges:
             # Get the ID for this edge
-            shapeID = G.get_edge_data(*edge)[self.idfield]
+            shapeID = G.get_edge_data(*edge)[idField]
 
             # We do this later so that we don't have to convert every shape.
             shapelyObj = self.network.featureToShapely(shapeID)

@@ -92,9 +92,16 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :param event:
         :return:
         """
+        currIDInd = self.ctlIDField.currentIndex()
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
-        selectedPath = selectedLayer.dataProvider().dataSourceUri().split('|')[0]
-        theProfile = Profile(selectedPath, int(self.ctlReachInt.text()))
+        selectedPath = str(selectedLayer.dataProvider().dataSourceUri().split('|')[0])
+
+        # What do I need to run the profiler
+        objID =  int(self.txtReachID.text())
+        IDFieldName = str(self.ctlIDField.itemData(currIDInd).name())
+
+        theProfile = Profile(selectedPath, IDFieldName, objID)
+        # Now write to CSV
         theProfile.writeCSV(self.txtCSVOutput.text())
 
     def setLabelMsg(self, text="", color='black'):
