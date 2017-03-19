@@ -55,21 +55,6 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
-       <widget class="QLabel" name="label">
-        <property name="font">
-         <font>
-          <pointsize>13</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Choose The Unique ID Field:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="ctlIDField"/>
-      </item>
-      <item>
        <widget class="QLabel" name="lblReachID">
         <property name="font">
          <font>

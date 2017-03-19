@@ -5,7 +5,7 @@ import networkx as nx
 
 class Profile():
 
-    def __init__(self, shpfile, idField, inID, outID=None):
+    def __init__(self, shpfile, inID, outID=None):
         """
         Profile a network from startID to endID
 
@@ -33,13 +33,13 @@ class Profile():
             log.error("Error parsing network", e)
         log = Logger("Main")
 
-        startNode = self.findnodewithID(G, inID, idField)
+        startNode = self.findnodewithID(G, inID)
 
         if not startNode:
             raise Exception("Could not find start ID: {} in network.".format(inID))
 
         if outID:
-            endNode = self.findnodewithID(G, outID, idField)
+            endNode = self.findnodewithID(G, outID)
             if not endNode:
                 raise Exception("Could not find end ID: {} in network.".format(outID))
             # Make a depth-first tree from the first headwater we find
@@ -61,7 +61,7 @@ class Profile():
         cummulativelength = 0
         for edge in self.path_edges:
             # Get the ID for this edge
-            shapeID = G.get_edge_data(*edge)[idField]
+            shapeID = G.get_edge_data(*edge)[self.idField]
 
             # We do this later so that we don't have to convert every shape.
             shapelyObj = self.network.featureToShapely(shapeID)
@@ -78,12 +78,13 @@ class Profile():
             # Calculate length and cumulative length
             self.attr.append({
                 'shpfields': attrField,
-                'calculated': attrCalc
+                'calculated': attrCalc,
+                'edge': edge
             })
         log.info('Pathfinding complete. Found a path with {} segments'.format(len(self.attr)))
 
 
-    def findnodewithID(self, G, id, idField):
+    def findnodewithID(self, G, id):
         """
         One line helper function to find a node with a given ID
         :param id:
@@ -92,7 +93,7 @@ class Profile():
         Logger("FindWithID")
         for e in G.edges_iter():
             data = G.get_edge_data(*e)
-        return next(iter([e for e in G.edges_iter() if G.get_edge_data(*e)[idField] == id]), None)
+        return next(iter([e for e in G.edges_iter() if G.get_edge_data(*e)[self.idField] == id]), None)
 
 
     def writeCSV(self, filename, colstr = ""):
@@ -126,7 +127,7 @@ class Profile():
             csvDict = {}
 
             # The ID field is not optional
-            csvDict[self.idfield] = node['shpfields'][self.idfield]
+            csvDict[self.idField] = node['shpfields'][self.idField]
 
             # Only some of the fields get included
             for key, val in node['shpfields'].iteritems():
@@ -135,7 +136,13 @@ class Profile():
             # Everything calculated gets included
             for key, val in node['calculated'].iteritems():
                 csvDict[key] = val
+
+            csvDict['startLat'] = node['edge'][0][0]
+            csvDict['startLng'] = node['edge'][0][1]
+
             results.append(csvDict)
+
+
 
         with open(filename, 'wb') as filename:
             keys = results[0].keys()
@@ -144,23 +151,25 @@ class Profile():
             def colSort(a, b):
                 # idfield should bubble up
                 item = self.attr[0]
-                if a == self.idfield:
+                if a == self.idField:
                     return -1
-                if b == self.idfield:
+                elif b == self.idField:
                     return 1
                 # put shpfields ahead of calc fields
-                if (a in item['shpfields'] and b in item['calculated']):
+                elif (a in item['shpfields'] and b in item['calculated']):
                     return -1
-                if (a in item['calculated'] and b in item['shpfields']):
+                elif (a in item['calculated'] and b in item['shpfields']):
                     return 1
                 # Sort everything else alphabetically
-                if (a in item['shpfields'] and b in item['shpfields']) or (a in item['calculated'] and b in item['calculated']):
+                elif (a in item['shpfields'] and b in item['shpfields']) or (a in item['calculated'] and b in item['calculated']):
                     if a.lower() > b.lower():
                         return 1
                     elif a.lower() < b.lower():
                         return -1
                     else:
                         return 0
+                else:
+                    return -1
 
             keys.sort(colSort)
 
@@ -168,3 +177,4 @@ class Profile():
             writer = csv.DictWriter(filename, keys)
             writer.writeheader()
             writer.writerows(results)
+        log.info("Done Writing CSV")

@@ -17,7 +17,7 @@ ogr.UseExceptions()
 
 class Shapefile:
 
-    def __init__(self, sFilename=None):
+    def __init__(self, sFilename):
         self.driver = ogr.GetDriverByName("ESRI Shapefile")
         self.datasource = None
         if sFilename:
@@ -31,11 +31,8 @@ class Shapefile:
         self.getFieldDef()
         self.getFeatures()
 
-        # TODO: This is not really doing anything for now. We'll need to figure this out if we can find an example
-        self.idField = "OBJECTID"
 
-
-    def getIDField(self):
+    def getObjectWithID(self, id, idfield):
         return self.idField
 
     def create(self, sFilename, spatialRef=None, geoType=ogr.wkbMultiLineString):
