@@ -85,8 +85,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.handlerSelectionChange()
         self.autoPopulate()
 
-
-
     def RunAction(self, event):
         """
         Here's where we call the actual tool
@@ -95,12 +93,11 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         print "Run Event"
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
-        selectedPath = str(selectedLayer.dataProvider().dataSourceUri().split('|')[0])
 
         # What do I need to run the profiler
         objID =  int(float(self.txtReachID.text()))
 
-        theProfile = Profile(selectedPath, objID)
+        theProfile = Profile(selectedLayer, objID)
         # Now write to CSV
         theProfile.writeCSV(self.txtCSVOutput.text())
 
