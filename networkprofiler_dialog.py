@@ -20,13 +20,12 @@
  *                                                                         *
  ***************************************************************************/
 """
-
 import os
 
 from PyQt4 import QtGui, uic
-from PyQt4.QtCore import QVariant
+from PyQt4.QtCore import QVariant, Qt
 from lib.profiler import Profile
-
+from debug import DEBUG
 from qgis.core import *
 from qgis.gui import *
 import qgis.utils
@@ -57,8 +56,8 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Map States:
         self.appSelectedLayer = None
-        self.appSelectedIDField = None
         self.appSelectedFields = []
+        self.appSelectedObjects = []
 
         # Hook an event into the selection changed event to tell us if we can grab our object or not
         self.mapCanvas.layersChanged.connect(self.handlerLayerChange)
@@ -70,11 +69,12 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # Set up our button events
         self.cmdBrowseCSV.clicked.connect(lambda: self.save_csv_dialog(self.txtCSVOutput))
         self.cmdGetReachFromMap.clicked.connect(self.autoPopulate)
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.RunAction)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.runProfilerAction)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
 
         # DEBUG: Just set some default values for now
-        # self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
+        if DEBUG:
+            self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
 
     def showEvent(self, event):
         super(networkProfilerDialog, self).showEvent(event)
@@ -85,7 +85,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.handlerSelectionChange()
         self.autoPopulate()
 
-    def RunAction(self, event):
+    def runProfilerAction(self, event):
         """
         Here's where we call the actual tool
         :param event:
@@ -95,11 +95,20 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
 
         # What do I need to run the profiler
-        objID =  int(float(self.txtReachID.text()))
+        obStartID = int(self.appSelectedObjects[0].id())
 
-        theProfile = Profile(selectedLayer, objID)
+        selectedFields = self.treeFields.selectedIndexes()
+
+        theProfile = Profile(selectedLayer, obStartID, debug=DEBUG)
         # Now write to CSV
-        theProfile.writeCSV(self.txtCSVOutput.text())
+
+        # TODO: None == All. This might need to be revisited
+        if len(self.treeFields.selectedIndexes()) == 0:
+            self.treeFields.selectAll()
+
+        cols = [str(idx.data(0, Qt.DisplayRole)) for idx in self.treeFields.selectedItems()]
+
+        theProfile.writeCSV(self.txtCSVOutput.text(), cols)
 
     def setLabelMsg(self, text="", color='black'):
         print "Set Label event"
@@ -119,20 +128,23 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 selLayerObj = obj
 
         if selLayerObj is not None:
-            self.lstFields.setEnabled(True)
+            self.treeFields.setEnabled(True)
 
             # Populate the list of fields to use
-            self.lstFields.clear()
+            self.treeFields.clear()
             for field in selLayerObj['fields']:
-                item = QtGui.QListWidgetItem(field.name())
-                self.lstFields.addItem(item)
+                # QTreeWidget / View
+                row = [field.name(), ""]
+                item = QtGui.QTreeWidgetItem(self.treeFields, row)
 
             # Select all by default.
-            if len(self.lstFields.selectedIndexes()) == 0:
-                self.lstFields.selectAll()
+            if len(self.treeFields.selectedIndexes()) == 0:
+                self.treeFields.selectAll()
 
+            # Now add the values back in
+            self.recalcReachValues()
         else:
-            self.lstFields.setEnabled(False)
+            self.treeFields.setEnabled(False)
 
     def recalcVectorLayers(self):
         """
@@ -168,8 +180,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.appSelectedLayer = self.ctlLayer.itemData(selMapLayerIndex)
 
     def getMapVectorLayerFields(self):
-        """
-        Now just get a list of fields for each layer and identify the int fields
+        """recalcReachValues each layer and identify the int fields
         as possible ID fields
         """
         print "getMapVectorLayerFields"
@@ -188,14 +199,27 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         print "ok"
 
 
-    def recalcReachID(self):
+    def recalcReachValues(self):
         """
         Set the reach ID field in the UI
         """
-        print "recalcReachID"
+        print "recalcReachValues"
         if len(self.mapSelectedObjects) == 1:
-            selectedItem = self.mapSelectedObjects[0]
-            self.txtReachID.setText(str(selectedItem[0].id()))
+            self.appSelectedObjects = self.mapSelectedObjects[0]
+
+            treeroot = self.treeFields.invisibleRootItem()
+            child_count = treeroot.childCount()
+            for i in range(child_count):
+                item = treeroot.child(i)
+                fieldidx = self.mapSelectedObjects[0][0].fields().indexFromName(item.data(0, 0))
+                if fieldidx > -1:
+                    value = self.appSelectedObjects[0].attributes()[fieldidx]
+                    if value is not None:
+                        item.setData(1, Qt.DisplayRole, value)
+
+            # Now add this data to the tree
+            for field in self.mapSelectedObjects[0][0].fields():
+                print "hello"
 
     def recalcGrabButton(self):
         """
@@ -262,7 +286,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :return:
         """
         print "stateUpdate"
-        self.recalcReachID()
+        self.recalcReachValues()
         self.recalcGrabButton()
         self.recalcOkButton()
 
@@ -277,6 +301,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         self.mapSelectedObjects = []
         for layer in self.mapVectorLayers:
+            # Only add items that are on the currrent layer
             if layer['layer'] == self.mapCanvas.currentLayer():
                 for feat in layer['layer'].selectedFeatures():
                     self.mapSelectedObjects.append((feat, layer['layer']))
@@ -290,7 +315,5 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     """
 
     def save_csv_dialog(self, txtControl):
-        filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "", "CSV File (*.csv);;All files (*)")
+        filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "ProfileOutput.csv", "CSV File (*.csv);;All files (*)")
         txtControl.setText(filename)
-
-

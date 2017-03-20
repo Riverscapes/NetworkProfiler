@@ -22,14 +22,7 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
-######################### REMOTE DEBUG #########################
-# To activate remote debugging set DEBUG_PLUGIN=AnalystToolbar as a QGIS
-# Environment variable in Preferences -> System -> Environment
-import os
-if 'DEBUG_PLUGIN' in os.environ and os.environ['DEBUG_PLUGIN'] == "NetworkProfiler":
-    import pydevd
-    pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True, suspend=False)
-######################### /REMOTE DEBUG #########################
+import debug
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name

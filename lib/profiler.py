@@ -6,7 +6,7 @@ from qgis.core import *
 
 class Profile():
 
-    def __init__(self, shpLayer, inID, outID=None):
+    def __init__(self, shpLayer, inID, outID=None, debug=False):
         """
         Profile a network from startID to endID
 
@@ -20,11 +20,11 @@ class Profile():
         # TODO: Could not find because stream flow was a problem. If you reverse your input and output then it works
 
         log = Logger("Main")
-
+        self.debug = debug
         self.idField = "_FID_"
 
         # Convert QgsLayer to NX graph
-        self.qgsLayertoNX(shpLayer, simplify=True, geom_attrs=False)
+        self.qgsLayertoNX(shpLayer, simplify=True, geom_attrs=self.debug)
         # Find the shortest path between 'in' and 'out'
         self.path_edges = self.nxShortestPath(inID, outID)
 
@@ -42,9 +42,6 @@ class Profile():
             cummulativelength += attrCalc['ProfileCalculatedLength']
             attrCalc['ProfileCummulativeLength'] = cummulativelength
 
-            attrCalc['startLat'] = edge[0][0]
-            attrCalc['startLng'] = edge[0][1]
-
             # Calculate length and cumulative length
             self.attr.append({
                 'shpfields': attrField,
@@ -55,7 +52,7 @@ class Profile():
 
 
 
-    def writeCSV(self, filename, colstr = ""):
+    def writeCSV(self, filename, cols=None):
         """
         Separate out the writer so we can test without writing files
         :param outdict:
@@ -71,10 +68,9 @@ class Profile():
 
         # Make a subset dictionary
         includedShpCols = []
-        if len(colstr) > 0:
-            inputDesiredCols = colstr.split(',')
-            for col in inputDesiredCols:
-                if col not in results[0]:
+        if len(cols) > 0:
+            for col in cols:
+                if col not in self.attr[0]['shpfields']:
                     log.error("WARNING: Could not find column '{}' in shapefile".format(col))
                 else:
                     includedShpCols.append(col)
@@ -86,7 +82,12 @@ class Profile():
             csvDict = {}
 
             # The ID field is not optional
+            # TODO: Hardcoding "FID" might not be the best idea here
             csvDict[self.idField] = node['shpfields'][self.idField]
+
+            # Debug gets the Wkt
+            if self.debug:
+                csvDict["Wkt"] = node['shpfields']['Wkt']
 
             # Only some of the fields get included
             for key, val in node['shpfields'].iteritems():
@@ -97,7 +98,6 @@ class Profile():
                 csvDict[key] = val
 
             results.append(csvDict)
-
 
 
         with open(filename, 'wb') as filename:
@@ -194,7 +194,7 @@ class Profile():
             g = f.geometry()
             attributes = dict(zip(fields, flddata))
             # We add the _FID_ manually
-            attributes['_FID_'] = f.id()
+            attributes[self.idField] = f.id()
             attributes['_calc_length_'] = g.length()
             # Note:  Using layer level geometry type
             # TODO: THIS MIGHT NOT WORK

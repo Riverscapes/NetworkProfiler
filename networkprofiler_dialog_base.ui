@@ -55,21 +55,6 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
-       <widget class="QLabel" name="lblReachID">
-        <property name="font">
-         <font>
-          <pointsize>13</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Start reach ID:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="txtReachID"/>
-      </item>
-      <item>
        <widget class="QLabel" name="lblFields">
         <property name="font">
          <font>
@@ -77,15 +62,40 @@
          </font>
         </property>
         <property name="text">
-         <string>Fields to include in profile:</string>
+         <string>Select fields to include in profile:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QListWidget" name="lstFields">
-        <property name="selectionMode">
-         <enum>QAbstractItemView::MultiSelection</enum>
+       <widget class="QTreeWidget" name="treeFields">
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAlwaysOff</enum>
         </property>
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+        <property name="selectionMode">
+         <enum>QAbstractItemView::ContiguousSelection</enum>
+        </property>
+        <property name="selectionBehavior">
+         <enum>QAbstractItemView::SelectRows</enum>
+        </property>
+        <property name="indentation">
+         <number>0</number>
+        </property>
+        <property name="columnCount">
+         <number>2</number>
+        </property>
+        <column>
+         <property name="text">
+          <string>Field</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Value</string>
+         </property>
+        </column>
        </widget>
       </item>
      </layout>
@@ -108,12 +118,14 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
-         <widget class="QLineEdit" name="txtCSVOutput"/>
-        </item>
-        <item>
-         <widget class="QLabel" name="lblCSV">
-          <property name="text">
-           <string>CSV output:</string>
+         <widget class="QLineEdit" name="txtCSVOutput">
+          <property name="font">
+           <font>
+            <pointsize>13</pointsize>
+           </font>
+          </property>
+          <property name="placeholderText">
+           <string>CSV File Path</string>
           </property>
          </widget>
         </item>
