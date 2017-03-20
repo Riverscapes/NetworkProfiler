@@ -277,8 +277,9 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         self.mapSelectedObjects = []
         for layer in self.mapVectorLayers:
-            for feat in layer['layer'].selectedFeatures():
-                self.mapSelectedObjects.append((feat, layer['layer']))
+            if layer['layer'] == self.mapCanvas.currentLayer():
+                for feat in layer['layer'].selectedFeatures():
+                    self.mapSelectedObjects.append((feat, layer['layer']))
 
     def getMapVectorLayers(self):
 
