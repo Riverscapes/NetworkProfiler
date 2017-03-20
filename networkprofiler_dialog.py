@@ -74,7 +74,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
 
         # DEBUG: Just set some default values for now
-        self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
+        # self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
 
     def showEvent(self, event):
         super(networkProfilerDialog, self).showEvent(event)
@@ -292,14 +292,5 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def save_csv_dialog(self, txtControl):
         filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "", "CSV File (*.csv);;All files (*)")
         txtControl.setText(filename)
-        self.appChangeEvent()
 
-    def existing_shp_browser(self, txtControl):
-        filename = QtGui.QFileDialog.getOpenFileName(self, "Open file", "", "Shp File (*.shp);;All files (*)")
-        txtControl.setText(filename)
-        self.appChangeEvent()
-
-    def folder_browser(self, txtControl):
-        foldername = QtGui.QFileDialog.getExistingDirectory(self, "Select Folder")
-        txtControl.setText(foldername)
 
