@@ -25,7 +25,7 @@ import os
 from PyQt4 import QtGui, uic
 from PyQt4.QtCore import QVariant, Qt
 from lib.profiler import Profile
-from debug import DEBUG
+from . import DEBUG
 from qgis.core import *
 from qgis.gui import *
 import qgis.utils
@@ -80,7 +80,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         super(networkProfilerDialog, self).showEvent(event)
         # Trigger a recalc of everything the first time
         # Now autopopulate values if we can
-        print "SHOW EVENT"
+        debugPrint("SHOW EVENT")
         self.handlerLayerChange()
         self.handlerSelectionChange()
         self.autoPopulate()
@@ -91,7 +91,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :param event:
         :return:
         """
-        print "Run Event"
+        debugPrint("Run Event")
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
 
         # What do I need to run the profiler
@@ -99,8 +99,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         selectedFields = self.treeFields.selectedIndexes()
 
-        theProfile = Profile(selectedLayer, obStartID, debug=DEBUG)
-        # Now write to CSV
+        theProfile = Profile(selectedLayer, obStartID, debug=DEBUG, msgcallback=self.setLabelMsg)
 
         # TODO: None == All. This might need to be revisited
         if len(self.treeFields.selectedIndexes()) == 0:
@@ -108,10 +107,16 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         cols = [str(idx.data(0, Qt.DisplayRole)) for idx in self.treeFields.selectedItems()]
 
-        theProfile.writeCSV(self.txtCSVOutput.text(), cols)
+        # Now write to CSV
+        try:
+            theProfile.writeCSV(self.txtCSVOutput.text(), cols)
+            self.okDlg("Completed:", infoText="CSV file written: {}".format(self.txtCSVOutput.text()))
+        except Exception as e:
+            detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(theProfile.logmsgs), str(e))
+            self.okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
 
     def setLabelMsg(self, text="", color='black'):
-        print "Set Label event"
+        debugPrint("Set Label event")
         self.lblWarning.setText(text)
         self.lblWarning.setStyleSheet('QLabel { color: ' + color + ' }')
 
@@ -120,7 +125,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         Get current layer index and then repopulate the dropdowns accordingly
         :return:
         """
-        print "recalcVectorLayerFields"
+        debugPrint( "recalcVectorLayerFields")
         selLayerData = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
         selLayerObj = None
         for obj in self.mapVectorLayers:
@@ -150,7 +155,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         Rebuild the vector layers combo box and reset the selected item if necessary
         """
-        print "recalcVectorLayers"
+        debugPrint( "recalcVectorLayers")
         self.ctlLayer.clear()
         self.ctlLayer.currentIndexChanged.disconnect(self.ctlLayerChange)
         for layerObj in self.mapVectorLayers:
@@ -169,7 +174,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         Set the current map layer in the dropdown from whatever layer is selected on the map
         """
-        print "setAppVectorLayerFromMap"
+        debugPrint( "setAppVectorLayerFromMap")
         currLayer = self.mapCanvas.currentLayer()
         selMapLayerIndex = self.ctlLayer.findData(currLayer)
 
@@ -183,7 +188,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """recalcReachValues each layer and identify the int fields
         as possible ID fields
         """
-        print "getMapVectorLayerFields"
+        debugPrint( "getMapVectorLayerFields")
         for layerObj in self.mapVectorLayers:
             allfields = []
             intfields = []
@@ -203,7 +208,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         Set the reach ID field in the UI
         """
-        print "recalcReachValues"
+        debugPrint( "recalcReachValues")
         if len(self.mapSelectedObjects) == 1:
             self.appSelectedObjects = self.mapSelectedObjects[0]
 
@@ -217,9 +222,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     if value is not None:
                         item.setData(1, Qt.DisplayRole, value)
 
-            # Now add this data to the tree
-            for field in self.mapSelectedObjects[0][0].fields():
-                print "hello"
 
     def recalcGrabButton(self):
         """
@@ -250,7 +252,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     """
     def handlerLayerChange(self):
         if self.isVisible():
-            print "handlerLayerChange"
+            debugPrint( "handlerLayerChange")
             # Get the data from the maps
             self.getMapVectorLayers()
             self.getMapVectorLayerFields()
@@ -260,13 +262,13 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
     def handlerSelectionChange(self):
         if self.isVisible():
-            print "handlerSelectionChange"
+            debugPrint( "handlerSelectionChange")
             self.getSelectedMapObjects()
             self.recalcGrabButton()
 
     def ctlLayerChange(self):
         if self.isVisible():
-            print "ctlLayerChange"
+            debugPrint( "ctlLayerChange")
             self.recalcVectorLayerFields()
             self.stateUpdate()
 
@@ -275,7 +277,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         This is the magic function that pulls values from the map selection
         :return:
         """
-        print "autoPopulate"
+        debugPrint( "autoPopulate")
         self.setAppVectorLayerFromMap()
         self.recalcVectorLayerFields()
         self.stateUpdate()
@@ -285,11 +287,10 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         This is the function that ripples through and updates the state of the UI
         :return:
         """
-        print "stateUpdate"
+        debugPrint( "stateUpdate")
         self.recalcReachValues()
         self.recalcGrabButton()
         self.recalcOkButton()
-
 
     """
     MAP HELPERS
@@ -307,7 +308,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     self.mapSelectedObjects.append((feat, layer['layer']))
 
     def getMapVectorLayers(self):
-
         self.mapVectorLayers = [{'layer':layer} for layer in self.mapCanvas.layers() if type(layer) is QgsVectorLayer]
 
     """
@@ -317,3 +317,32 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def save_csv_dialog(self, txtControl):
         filename = QtGui.QFileDialog.getSaveFileName(self, "Output File", "ProfileOutput.csv", "CSV File (*.csv);;All files (*)")
         txtControl.setText(filename)
+
+    def okDlg(self, txt, infoText="", detailsTxt=None, icon=QtGui.QMessageBox.Information):
+        msg = QtGui.QMessageBox()
+        msg.setIcon(icon)
+
+        msg.setText(txt)
+        msg.setInformativeText(infoText)
+        msg.setWindowTitle("Network Profiler")
+        if detailsTxt is not None:
+            msg.setDetailedText(detailsTxt)
+        msg.setStandardButtons(QtGui.QMessageBox.Ok)
+        msg.buttonClicked.connect(msg.close)
+
+        # This is a hack to be able to resize the box
+        horizontal_spacer = QtGui.QSpacerItem(500, 0, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        layout = msg.layout()
+        layout.addItem(horizontal_spacer, layout.rowCount(), 0, 1, layout.columnCount())
+
+        msg.exec_()
+
+def debugPrint(msg):
+    """
+    Just a little method to help us figure out what's going on (and in what ordeR)
+    :param self:
+    :param msg:
+    :return:
+    """
+    if DEBUG:
+        print "DEBUG: {}".format(msg)

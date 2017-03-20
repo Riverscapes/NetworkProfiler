@@ -1,12 +1,12 @@
-from logger import Logger
 import csv
 import networkx as nx
 import ogr
 from qgis.core import *
+import logging
 
 class Profile():
 
-    def __init__(self, shpLayer, inID, outID=None, debug=False):
+    def __init__(self, shpLayer, inID, outID=None, debug=False, msgcallback=None):
         """
         Profile a network from startID to endID
 
@@ -18,11 +18,11 @@ class Profile():
         """
         # TODO: Could not find because those points are in two different subnetworks. Please fix your network
         # TODO: Could not find because stream flow was a problem. If you reverse your input and output then it works
-
-        log = Logger("Main")
+        self.logger = logging.getLogger('Profile')
+        self.msgcallback = msgcallback
         self.debug = debug
         self.idField = "_FID_"
-
+        self.logmsgs = []
         # Convert QgsLayer to NX graph
         self.qgsLayertoNX(shpLayer, simplify=True, geom_attrs=self.debug)
         # Find the shortest path between 'in' and 'out'
@@ -30,7 +30,7 @@ class Profile():
 
         self.attr = []
 
-        log.info('Calculating lengths...')
+        self.logInfo('Calculating lengths...')
 
         cummulativelength = 0
         for edge in self.path_edges:
@@ -48,7 +48,7 @@ class Profile():
                 'calculated': attrCalc,
                 'edge': edge
             })
-        log.info('Pathfinding complete. Found a path with {} segments'.format(len(self.attr)))
+        self.logInfo('Pathfinding complete. Found a path with {} segments'.format(len(self.attr)))
 
 
 
@@ -59,11 +59,10 @@ class Profile():
         :param csv:
         :return:
         """
-        log = Logger("CSV Writer")
         results = []
-        log.info("Writing CSV file")
+        self.logInfo("Writing CSV file")
         if len(self.attr) == 0:
-            log.error("WARNING: No rows to write to CSV. Nothing done")
+            self.logError("WARNING: No rows to write to CSV. Nothing done")
             return
 
         # Make a subset dictionary
@@ -71,7 +70,7 @@ class Profile():
         if len(cols) > 0:
             for col in cols:
                 if col not in self.attr[0]['shpfields']:
-                    log.error("WARNING: Could not find column '{}' in shapefile".format(col))
+                    self.logError("WARNING: Could not find column '{}' in shapefile".format(col))
                 else:
                     includedShpCols.append(col)
         else:
@@ -133,7 +132,7 @@ class Profile():
             writer = csv.DictWriter(filename, keys)
             writer.writeheader()
             writer.writerows(results)
-        log.info("Done Writing CSV")
+        self.logInfo("Done Writing CSV")
 
 
     def nxShortestPath(self, inID, outID=None):
@@ -144,7 +143,6 @@ class Profile():
         :param outID:
         :return:
         """
-        log = Logger("nxShortestPath")
         path_edges = None
         startNode = self.findnodewithID(inID)
 
@@ -160,13 +158,12 @@ class Profile():
                 shortestpath = nx.shortest_path(self.G, source=startNode[0], target=endNode[1])
                 path_edges = zip(shortestpath, shortestpath[1:])
             except Exception, e:
-                log.error("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
-                raise e
+                raise Exception("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
         else:
             try:
                 path_edges = list(nx.dfs_edges(self.G, startNode[0]))
             except Exception, e:
-                log.error("Path not found between input point with ID: {} and outflow point".format(inID))
+                raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
 
         return path_edges
 
@@ -179,13 +176,10 @@ class Profile():
         :param geom_attrs:
         :return:
         """
-        log = Logger('qgsLayertoNX')
-
-        log.info("parsing shapefile into network...")
-
-        log.info("Shapefile successfully parsed into directed network")
+        self.logInfo("parsing shapefile into network...")
 
         self.G = nx.DiGraph()
+        self.logInfo("Shapefile successfully parsed into directed network")
 
         for f in shapelayer.getFeatures():
             flddata = f.attributes()
@@ -258,7 +252,18 @@ class Profile():
         :param id:
         :return:
         """
-        Logger("FindWithID")
         for e in self.G.edges_iter():
             data = self.G.get_edge_data(*e)
         return next(iter([e for e in self.G.edges_iter() if self.G.get_edge_data(*e)[self.idField] == id]), None)
+
+    def logInfo(self, msg):
+        if self.msgcallback:
+            self.msgcallback(msg, color="green")
+        self.logmsgs.append(msg)
+        self.logger.info(msg)
+
+    def logError(self, msg):
+        if self.msgcallback:
+            self.msgcallback(msg, color="red")
+        self.logmsgs.append("[ERROR]" + msg)
+        self.logger.error(msg)
