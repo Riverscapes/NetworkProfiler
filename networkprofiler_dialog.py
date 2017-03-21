@@ -70,7 +70,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # Set up our button events
         self.cmdBrowseCSV.clicked.connect(lambda: self.save_csv_dialog(self.txtCSVOutput))
         self.cmdGetReachFromMap.clicked.connect(self.autoPopulate)
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.runProfilerAction)
+
+        self.btnCreateProfile.clicked.connect(self.runProfilerAction)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.openHelp)
 
@@ -214,7 +215,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             layerObj['fields'] = allfields
             layerObj['idFields'] = intfields
 
-    def recalcOkButton(self):
+    def recalcGoButton(self):
         """
         The ok button shouldn't allow bad behaviour
         :return:
@@ -229,7 +230,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         if len(self.treeFields.selectedIndexes()) == 0:
             enabled = False
 
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).setEnabled(enabled)
+        self.btnCreateProfile.setEnabled(enabled)
 
     def resetAppSelectedObjects(self):
         """
@@ -321,7 +322,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         debugPrint( "stateUpdate")
         self.recalcGrabButton()
-        self.recalcOkButton()
+        self.recalcGoButton()
 
     """
     MAP HELPERS
