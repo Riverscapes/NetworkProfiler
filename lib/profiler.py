@@ -128,7 +128,6 @@ class Profile():
 
             keys.sort(colSort)
 
-
             writer = csv.DictWriter(filename, keys)
             writer.writeheader()
             writer.writerows(results)
@@ -202,7 +201,7 @@ class Profile():
                     self.G[e1][e2].update(attr)
             else:
                 raise ImportError("GeometryType {} not supported".
-                                  format(g.wkbType()))
+                                  format(QgsWKBTypes.displayString(int(g.wkbType()))))
 
 
 

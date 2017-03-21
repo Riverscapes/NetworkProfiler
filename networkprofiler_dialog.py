@@ -72,6 +72,11 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.runProfilerAction)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
 
+        # When to recalc app state. Choose these carefully. They run a lot.
+        self.treeFields.itemSelectionChanged.connect(self.stateUpdate)
+        self.txtCSVOutput.textChanged.connect(self.stateUpdate)
+        self.ctlLayer.currentIndexChanged.connect(self.stateUpdate)
+
         # DEBUG: Just set some default values for now
         if DEBUG:
             self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
@@ -95,11 +100,20 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         selectedLayer = self.ctlLayer.itemData(self.ctlLayer.currentIndex())
 
         # What do I need to run the profiler
-        obStartID = int(self.appSelectedObjects[0].id())
+        obStartID = int(self.appSelectedObjects[0][0].id())
 
-        selectedFields = self.treeFields.selectedIndexes()
+        theProfile = None
+        try:
+            theProfile = Profile(selectedLayer, obStartID, debug=DEBUG, msgcallback=self.setLabelMsg)
+        except Exception as e:
+            if theProfile is not None and theProfile.logmsgs is not None:
+                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(theProfile.logmsgs), str(e))
+                self.okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+            else:
+                detailstxt = "Exception:\n=====================\n{0}".format(str(e))
+                self.okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+                return
 
-        theProfile = Profile(selectedLayer, obStartID, debug=DEBUG, msgcallback=self.setLabelMsg)
 
         # TODO: None == All. This might need to be revisited
         if len(self.treeFields.selectedIndexes()) == 0:
@@ -146,8 +160,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             if len(self.treeFields.selectedIndexes()) == 0:
                 self.treeFields.selectAll()
 
-            # Now add the values back in
-            self.recalcReachValues()
         else:
             self.treeFields.setEnabled(False)
 
@@ -201,16 +213,30 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             layerObj['idFields'] = intfields
 
     def recalcOkButton(self):
-        print "ok"
+        """
+        The ok button shouldn't allow bad behaviour
+        :return:
+        """
+        enabled = True
+        if self.ctlLayer.count() == 0 or self.ctlLayer.currentIndex() < 0:
+            enabled = False
+        if len(self.appSelectedObjects) == 0:
+            enabled = False
+        if len(self.txtCSVOutput.text()) == 0:
+            enabled = False
+        if len(self.treeFields.selectedIndexes()) == 0:
+            enabled = False
 
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).setEnabled(enabled)
 
-    def recalcReachValues(self):
+    def resetAppSelectedObjects(self):
         """
         Set the reach ID field in the UI
         """
         debugPrint( "recalcReachValues")
+        self.appSelectedObjects = []
         if len(self.mapSelectedObjects) == 1:
-            self.appSelectedObjects = self.mapSelectedObjects[0]
+            self.appSelectedObjects.append(self.mapSelectedObjects[0])
 
             treeroot = self.treeFields.invisibleRootItem()
             child_count = treeroot.childCount()
@@ -218,10 +244,9 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 item = treeroot.child(i)
                 fieldidx = self.mapSelectedObjects[0][0].fields().indexFromName(item.data(0, 0))
                 if fieldidx > -1:
-                    value = self.appSelectedObjects[0].attributes()[fieldidx]
+                    value = self.appSelectedObjects[0][0].attributes()[fieldidx]
                     if value is not None:
                         item.setData(1, Qt.DisplayRole, value)
-
 
     def recalcGrabButton(self):
         """
@@ -238,8 +263,11 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.setLabelMsg("You have 0 features selected. To use the grab tool you must select at least one.".format(
                 len(self.mapSelectedObjects)))
         else:
-            self.setLabelMsg("One reach selected. Use the Grab button to populate the fields above")
-            self.cmdGetReachFromMap.setEnabled(True)
+            if len(self.appSelectedObjects) > 0 and self.mapSelectedObjects[0][0].id() == self.appSelectedObjects[0][0].id():
+                self.setLabelMsg("Selected map object is captured above.")
+            else:
+                self.setLabelMsg("New reach selected. Use the Grab button to populate the fields above")
+                self.cmdGetReachFromMap.setEnabled(True)
 
 
     """
@@ -264,12 +292,13 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         if self.isVisible():
             debugPrint( "handlerSelectionChange")
             self.getSelectedMapObjects()
-            self.recalcGrabButton()
+            self.stateUpdate()
 
     def ctlLayerChange(self):
         if self.isVisible():
             debugPrint( "ctlLayerChange")
             self.recalcVectorLayerFields()
+            self.getMapVectorLayerFields()
             self.stateUpdate()
 
     def autoPopulate(self):
@@ -280,6 +309,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         debugPrint( "autoPopulate")
         self.setAppVectorLayerFromMap()
         self.recalcVectorLayerFields()
+        self.resetAppSelectedObjects()
         self.stateUpdate()
 
     def stateUpdate(self):
@@ -288,7 +318,6 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :return:
         """
         debugPrint( "stateUpdate")
-        self.recalcReachValues()
         self.recalcGrabButton()
         self.recalcOkButton()
 
