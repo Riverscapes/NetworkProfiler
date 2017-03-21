@@ -1,5 +1,15 @@
 # network-profiler
 
+This is a QGis python plugin that is designed to profile a particular stream network from a start point to an end point and output a CSV file.
+
+## Requirements
+
+You must have QGis installed. This plugin also requires `networkx`. Most QGis users should already have networkx installed but if you don't then you need to go get it:
+
+``` bash
+pip install networkx
+```
+
 
 ## Installation
 
