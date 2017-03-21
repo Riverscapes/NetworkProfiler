@@ -45,5 +45,5 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
-    from .networkprofiler import networkProfiler
-    return networkProfiler(iface)
+    from .networkprofiler import NetworkProfiler
+    return NetworkProfiler(iface)

@@ -16,8 +16,8 @@ email=info@northarrowresearch.com
 
 about=Scrape ShapeFile Attributees From a River Network ShapeFile
 
-tracker=https://github.com/Riverscapes/network-profiler/issues
-repository=https://github.com/Riverscapes/network-profiler
+tracker=https://github.com/Riverscapes/NetworkProfiler/issues
+repository=https://github.com/Riverscapes/NetworkProfiler
 # End of mandatory metadata
 
 # Recommended items:

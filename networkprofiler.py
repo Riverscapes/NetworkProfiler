@@ -25,11 +25,11 @@ from PyQt4.QtGui import QAction, QIcon
 # Initialize Qt resources from file resources.py
 import resources
 # Import the code for the dialog
-from networkprofiler_dialog import networkProfilerDialog
+from networkprofiler_dialog import NetworkProfilerDialog
 import os.path
 
 
-class networkProfiler:
+class NetworkProfiler:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -132,7 +132,7 @@ class networkProfiler:
         """
 
         # Create the dialog (after translation) and keep reference
-        self.dlg = networkProfilerDialog()
+        self.dlg = NetworkProfilerDialog()
 
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
@@ -160,7 +160,7 @@ class networkProfiler:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/networkProfiler/icon.png'
+        icon_path = ':/plugins/NetworkProfiler/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'Network Profiler'),

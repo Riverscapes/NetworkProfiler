@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- networkProfilerDialog
+ NetworkProfilerDialog
                                  A QGIS plugin
  Scrape ShapeFile Attributees From a River Network ShapeFile
                              -------------------
@@ -24,7 +24,7 @@ import os
 
 from PyQt4 import QtGui, uic
 from PyQt4.QtCore import QVariant, Qt
-from lib.profiler import Profile
+from profiler import Profile
 from . import DEBUG
 from qgis.core import *
 from qgis.gui import *
@@ -33,10 +33,10 @@ import qgis.utils
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'networkprofiler_dialog_base.ui'))
 
-class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
+class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
         """Constructor."""
-        super(networkProfilerDialog, self).__init__(parent)
+        super(NetworkProfilerDialog, self).__init__(parent)
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
@@ -82,7 +82,7 @@ class networkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
 
     def showEvent(self, event):
-        super(networkProfilerDialog, self).showEvent(event)
+        super(NetworkProfilerDialog, self).showEvent(event)
         # Trigger a recalc of everything the first time
         # Now autopopulate values if we can
         debugPrint("SHOW EVENT")

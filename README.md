@@ -1,4 +1,4 @@
-# network-profiler
+# Network Profiler QGIS Plugin
 
 This is a QGis python plugin that is designed to profile a particular stream network from a start point to an end point and output a CSV file.
 

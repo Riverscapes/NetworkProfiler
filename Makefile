@@ -1,5 +1,5 @@
 #/***************************************************************************
-# networkProfiler
+# NetworkProfiler
 #
 # Scrape ShapeFile Attributees From a River Network ShapeFile
 #							 -------------------
@@ -40,7 +40,7 @@ SOURCES = \
 	__init__.py \
 	networkprofiler.py networkprofiler_dialog.py
 
-PLUGINNAME = networkProfiler
+PLUGINNAME = NetworkProfiler
 
 PY_FILES = \
 	__init__.py \
