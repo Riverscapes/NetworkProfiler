@@ -3,6 +3,7 @@ import networkx as nx
 import ogr
 from qgis.core import *
 import logging
+from shapely.geometry import *
 
 class Profile():
 
@@ -190,7 +191,6 @@ class Profile():
             attributes[self.idField] = f.id()
             attributes['_calc_length_'] = g.length()
             # Note:  Using layer level geometry type
-            # TODO: THIS MIGHT NOT WORK
             if g.wkbType() == QgsWKBTypes.Point:
                 self.G.add_node(g.asPoint(), attributes)
 
@@ -200,7 +200,7 @@ class Profile():
                     self.G.add_edge(e1, e2)
                     self.G[e1][e2].update(attr)
             else:
-                raise ImportError("GeometryType {} not supported".
+                raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
                                   format(QgsWKBTypes.displayString(int(g.wkbType()))))
 
 
