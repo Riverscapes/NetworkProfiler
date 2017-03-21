@@ -34,7 +34,7 @@ class Profile():
         self.logInfo('Calculating lengths...')
 
         cummulativelength = 0
-        for edge in self.path_edges:
+        for idx, edge in enumerate(self.path_edges):
             # Get the ID for this edge
             attrField = self.G.get_edge_data(*edge)
 
@@ -42,7 +42,7 @@ class Profile():
             attrCalc['ProfileCalculatedLength'] = attrField['_calc_length_']
             cummulativelength += attrCalc['ProfileCalculatedLength']
             attrCalc['ProfileCummulativeLength'] = cummulativelength
-
+            attrCalc['ProfileID'] = idx + 1
             # Calculate length and cumulative length
             self.attr.append({
                 'shpfields': attrField,
@@ -86,8 +86,8 @@ class Profile():
             csvDict[self.idField] = node['shpfields'][self.idField]
 
             # Debug gets the Wkt
-            if self.debug:
-                csvDict["Wkt"] = node['shpfields']['Wkt']
+            # if self.debug:
+            csvDict["Wkt"] = node['shpfields']['Wkt']
 
             # Only some of the fields get included
             for key, val in node['shpfields'].iteritems():
