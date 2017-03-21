@@ -16,27 +16,10 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupBox_3">
-     <property name="font">
-      <font>
-       <pointsize>15</pointsize>
-      </font>
-     </property>
      <property name="title">
-      <string> 1. Input Layer</string>
+      <string> 1. Choose a vector layer from your map:</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_5">
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="font">
-         <font>
-          <pointsize>13</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Choose a vector layer:</string>
-        </property>
-       </widget>
-      </item>
       <item>
        <widget class="QComboBox" name="ctlLayer"/>
       </item>
@@ -44,28 +27,57 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_2">
-     <property name="font">
-      <font>
-       <pointsize>15</pointsize>
-      </font>
-     </property>
+    <widget class="QGroupBox" name="groupBox_4">
      <property name="title">
-      <string>2. Reach Selection</string>
+      <string>2. Select Feature A from map</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_4">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QLabel" name="lblFields">
-        <property name="font">
-         <font>
-          <pointsize>13</pointsize>
-         </font>
-        </property>
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string>Select fields to include in profile:</string>
+         <string>Select a map feature and then click the button below to grab it.</string>
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="cmdGetReachFromMap">
+        <property name="text">
+         <string>Grab From Map Selection</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblWarning">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+          <italic>true</italic>
+         </font>
+        </property>
+        <property name="text">
+         <string>NOTE: Point B is always the outflow point (for now)</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>3. Select Fields to include in Profile</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
        <widget class="QTreeWidget" name="treeFields">
         <property name="horizontalScrollBarPolicy">
@@ -75,7 +87,7 @@
          <bool>true</bool>
         </property>
         <property name="selectionMode">
-         <enum>QAbstractItemView::ContiguousSelection</enum>
+         <enum>QAbstractItemView::ExtendedSelection</enum>
         </property>
         <property name="selectionBehavior">
          <enum>QAbstractItemView::SelectRows</enum>
@@ -98,18 +110,29 @@
         </column>
        </widget>
       </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+          <italic>true</italic>
+         </font>
+        </property>
+        <property name="text">
+         <string>Don't forget to select a unique ID field so you can identify points in your CSV file</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox">
-     <property name="font">
-      <font>
-       <pointsize>15</pointsize>
-      </font>
-     </property>
      <property name="title">
-      <string>3. Output</string>
+      <string>4. Select the Output CSV path:</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -142,21 +165,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="lblWarning">
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_5">
-     <item>
-      <widget class="QPushButton" name="cmdGetReachFromMap">
-       <property name="text">
-        <string>Grab From Selected Shape</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <widget class="QDialogButtonBox" name="cmdButtons">
        <property name="orientation">
