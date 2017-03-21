@@ -65,7 +65,7 @@
          </font>
         </property>
         <property name="text">
-         <string>NOTE: Point B is always the outflow point (for now)</string>
+         <string>NOTE: Feature B is always the outflow point (for now)</string>
         </property>
        </widget>
       </item>
@@ -172,7 +172,7 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Help|QDialogButtonBox::Ok</set>
        </property>
       </widget>
      </item>

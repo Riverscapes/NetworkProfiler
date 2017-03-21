@@ -23,13 +23,14 @@
 import os
 
 from PyQt4 import QtGui, uic
-from PyQt4.QtCore import QVariant, Qt
+from PyQt4.QtCore import QVariant, Qt, QUrl
 from profiler import Profile
 from . import DEBUG
 from qgis.core import *
 from qgis.gui import *
 import qgis.utils
 
+HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'networkprofiler_dialog_base.ui'))
 
@@ -71,6 +72,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmdGetReachFromMap.clicked.connect(self.autoPopulate)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Ok).clicked.connect(self.runProfilerAction)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.openHelp)
 
         # When to recalc app state. Choose these carefully. They run a lot.
         self.treeFields.itemSelectionChanged.connect(self.stateUpdate)
@@ -366,6 +368,10 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         msg.exec_()
 
+    def openHelp(self):
+        QtGui.QDesktopServices.openUrl(QUrl(HELP_URL))
+
+
 def debugPrint(msg):
     """
     Just a little method to help us figure out what's going on (and in what ordeR)
@@ -375,3 +381,5 @@ def debugPrint(msg):
     """
     if DEBUG:
         print "DEBUG: {}".format(msg)
+
+
