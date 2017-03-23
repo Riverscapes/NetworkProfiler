@@ -33,3 +33,14 @@ Until this plugin is available on the plugin store you're going to need to insta
 
 Please click the "more info" button. Feel free to send your shape files and errors to me directly or file a bug on this repo
 
+### Deploy
+
+1. `pb_tool zip`
+2. rename the zip to `NetworkProfiler-0.0.1.zip` CAREFUL OF VERSION
+3. upload it
+
+```
+aws s3 cp NetworkProfiler-0.0.1.zip s3://qgis.northarrowresearch.com/plugins/networkprofiler/
+```
+
+Now update the `Plugins.xml` wherever this is being served. Be sure to update the Version
