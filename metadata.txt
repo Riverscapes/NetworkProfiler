@@ -7,10 +7,10 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Network Profiler
+name=NetworkProfiler
 qgisMinimumVersion=2.0
 description=Scrape ShapeFile Attributees From a River Network ShapeFile
-version=0.1
+version=0.0.1
 author=North Arrow Research Ltd.
 email=info@northarrowresearch.com
 

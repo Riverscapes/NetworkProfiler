@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
- networkProfiler
+ NetworkProfiler
                                  A QGIS plugin
  Scrape ShapeFile Attributees From a River Network ShapeFile
                               -------------------
@@ -78,7 +78,7 @@ class NetworkProfiler:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('networkProfiler', message)
+        return QCoreApplication.translate('NetworkProfiler', message)
 
 
     def add_action(
