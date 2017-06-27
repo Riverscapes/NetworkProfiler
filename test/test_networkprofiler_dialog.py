@@ -16,7 +16,7 @@ import unittest
 
 from PyQt4.QtGui import QDialogButtonBox, QDialog
 
-from networkprofiler_dialog import networkProfilerDialog
+from networkprofiler_dialog import NetworkProfilerDialog
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
@@ -27,7 +27,7 @@ class networkProfilerDialogTest(unittest.TestCase):
 
     def setUp(self):
         """Runs before each test."""
-        self.dialog = networkProfilerDialog(None)
+        self.dialog = NetworkProfilerDialog(None)
 
     def tearDown(self):
         """Runs after each test."""

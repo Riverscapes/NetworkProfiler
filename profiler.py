@@ -3,11 +3,14 @@ import networkx as nx
 import ogr
 from qgis.core import *
 import logging
+from collections import namedtuple
 from shapely.geometry import *
+
+EdgeObj = namedtuple('EdgeObj', ['edge', 'shpfields','calcfields'], verbose=True)
 
 class Profile():
 
-    def __init__(self, shpLayer, inID, outID=None, debug=False, msgcallback=None):
+    def __init__(self, shpLayer, msgcallback=None):
         """
         Profile a network from startID to endID
 
@@ -21,37 +24,11 @@ class Profile():
         # TODO: Could not find because stream flow was a problem. If you reverse your input and output then it works
         self.logger = logging.getLogger('Profile')
         self.msgcallback = msgcallback
-        self.debug = debug
         self.idField = "_FID_"
         self.logmsgs = []
         # Convert QgsLayer to NX graph
-        self.qgsLayertoNX(shpLayer, simplify=True, geom_attrs=self.debug)
-        # Find the shortest path between 'in' and 'out'
-        self.path_edges = self.nxShortestPath(inID, outID)
-
-        self.attr = []
-
-        self.logInfo('Calculating lengths...')
-
-        cummulativelength = 0
-        for idx, edge in enumerate(self.path_edges):
-            # Get the ID for this edge
-            attrField = self.G.get_edge_data(*edge)
-
-            attrCalc = {}
-            attrCalc['ProfileCalculatedLength'] = attrField['_calc_length_']
-            cummulativelength += attrCalc['ProfileCalculatedLength']
-            attrCalc['ProfileCummulativeLength'] = cummulativelength
-            attrCalc['ProfileID'] = idx + 1
-            # Calculate length and cumulative length
-            self.attr.append({
-                'shpfields': attrField,
-                'calculated': attrCalc,
-                'edge': edge
-            })
-        self.logInfo('Pathfinding complete. Found a path with {} segments'.format(len(self.attr)))
-
-
+        self.qgsLayertoNX(shpLayer, simplify=True)
+        self.paths = []
 
     def writeCSV(self, filename, cols=None):
         """
@@ -134,8 +111,26 @@ class Profile():
             writer.writerows(results)
         self.logInfo("Done Writing CSV")
 
+    def _calcfields(self, edges):
+        path = []
 
-    def nxShortestPath(self, inID, outID=None):
+        cummulativelength = 0
+        for idx, edge in enumerate(edges):
+            # Get the ID for this edge
+            attrField = list(filter(lambda x: x.lower() not in ['json', 'wkb', 'wkt'], self.G.get_edge_data(*edge)))
+
+            attrCalc = {}
+            attrCalc['ProfileCalculatedLength'] = attrField['_calc_length_']
+            cummulativelength += attrCalc['ProfileCalculatedLength']
+            attrCalc['ProfileCummulativeLength'] = cummulativelength
+            attrCalc['ProfileID'] = idx + 1
+            # Calculate length and cumulative length
+            path.append(EdgeObj(edge, attrField, attrCalc))
+
+        self.paths.append(path)
+
+
+    def pathfinder(self, inID, outID=None):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -143,7 +138,7 @@ class Profile():
         :param outID:
         :return:
         """
-        path_edges = None
+        self.paths = []
         startNode = self.findnodewithID(inID)
 
         if not startNode:
@@ -155,8 +150,9 @@ class Profile():
                 raise Exception("Could not find end ID: {} in network.".format(outID))
             # Make a depth-first tree from the first headwater we find
             try:
-                shortestpath = nx.shortest_path(self.G, source=startNode[0], target=endNode[1])
-                path_edges = zip(shortestpath, shortestpath[1:])
+                for path in nx.all_simple_paths(self.G, source=startNode[0], target=endNode[1]):
+                    edges = zip(path, path[1:])
+                    self.paths.append(self._calcfields(edges))
             except Exception, e:
                 raise Exception("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
         else:
@@ -166,7 +162,6 @@ class Profile():
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
 
         return path_edges
-
 
     def qgsLayertoNX(self, shapelayer, simplify=True, geom_attrs=True):
         """
@@ -190,10 +185,14 @@ class Profile():
             # We add the _FID_ manually
             attributes[self.idField] = f.id()
             attributes['_calc_length_'] = g.length()
+
+            # We don't care about M or Z
+            g.geometry().dropMValue()
+            g.geometry().dropZValue()
+
             # Note:  Using layer level geometry type
             if g.wkbType() == QgsWKBTypes.Point:
                 self.G.add_node(g.asPoint(), attributes)
-
             elif g.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
                 for edge in self.edges_from_line(g, attributes, simplify, geom_attrs):
                     e1, e2, attr = edge
@@ -251,8 +250,8 @@ class Profile():
         :param id:
         :return:
         """
-        for e in self.G.edges_iter():
-            data = self.G.get_edge_data(*e)
+        # for e in self.G.edges_iter():
+        #     data = self.G.get_edge_data(*e)
         return next(iter([e for e in self.G.edges_iter() if self.G.get_edge_data(*e)[self.idField] == id]), None)
 
     def logInfo(self, msg):

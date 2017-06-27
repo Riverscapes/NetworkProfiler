@@ -25,7 +25,7 @@ import os
 from PyQt4 import QtGui, uic
 from PyQt4.QtCore import QVariant, Qt, QUrl
 from profiler import Profile
-from . import DEBUG
+from debug import Debugger
 from qgis.core import *
 from qgis.gui import *
 import qgis.utils
@@ -81,7 +81,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.ctlLayer.currentIndexChanged.connect(self.stateUpdate)
 
         # DEBUG: Just set some default values for now
-        if DEBUG:
+        if Debugger.DEBUG:
             self.txtCSVOutput.setText("/Users/work/Desktop/TEST.csv")
 
     def showEvent(self, event):

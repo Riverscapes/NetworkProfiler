@@ -18,7 +18,7 @@ from PyQt4.QtGui import QIcon
 
 
 
-class networkProfilerDialogTest(unittest.TestCase):
+class networkProfilerResourcesTest(unittest.TestCase):
     """Test rerources work."""
 
     def setUp(self):
