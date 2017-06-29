@@ -21,14 +21,15 @@
  ***************************************************************************/
 """
 import os
-
 from PyQt4 import QtGui, uic
+
+import qgis.utils
 from PyQt4.QtCore import QVariant, Qt, QUrl
-from profiler import Profile
-from debug import Debugger
 from qgis.core import *
 from qgis.gui import *
-import qgis.utils
+
+from debug import Debugger
+from engine.profiler import Profile
 
 HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
 FORM_CLASS, _ = uic.loadUiType(os.path.join(

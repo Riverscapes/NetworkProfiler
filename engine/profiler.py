@@ -11,6 +11,7 @@ We invented a special kind of tuple to handle all the different properties of an
 """
 EdgeObj = namedtuple('EdgeObj', ['edge', 'fid'], verbose=True)
 
+
 class Profile():
 
     def __init__(self, shpLayer, msgcallback=None):
@@ -23,8 +24,7 @@ class Profile():
         :param inID:  The ID of the input network segment
         :param outID:  The ID of the output network segment (Optional) Default is none
         """
-        # TODO: Could not find because those points are in two different subnetworks. Please fix your network
-        # TODO: Could not find because stream flow was a problem. If you reverse your input and output then it works
+
         self.logger = logging.getLogger('Profile')
         self.msgcallback = msgcallback
         self.idField = "_FID_"
@@ -34,7 +34,7 @@ class Profile():
         self.features = {}
 
         # Convert QgsLayer to NX graph
-        self.qgsLayertoNX(shpLayer, simplify=True)
+        self._qgsLayertoNX(shpLayer, simplify=True)
 
     def writeCSV(self, filename, cols=None):
         """
@@ -154,7 +154,7 @@ class Profile():
         return path
 
 
-    def pathfinder(self, inID, outID=None):
+    def pathfinder(self, inID, outID=None, choice=None):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -163,36 +163,12 @@ class Profile():
         :return:
         """
         self.paths = []
+        self.choice =choice
+
         startEdge = self.findEdgewithID(inID)
-
-        def prepareEdges(G, edges):
-            return [(edge, G.get_edge_data(*edge).keys()) for edge in edges]
-
-        def recursivePathFinder(edges, index=0, path=[]):
-            """
-            Help us find all the different paths with a given combination of nodes
-            :return:
-            """
-            newpath = path[:]
-
-            # Continue along a straight edge as far as we can until we end or find a fork
-            while index < len(edges) and len(edges[index][1]) < 2:
-                newpath.append((edges[index], edges[index][1][0]))
-                index += 1
-
-            if index >= len(edges):
-                self.paths.append(newpath)
-            else:
-                # Here is the end or a fork
-                for fid in edges[index][1]:
-                    newEdge = [(edges[index], fid)]
-                    recursivePathFinder(edges, index+1, newpath + newEdge)
-
 
         if not startEdge:
             raise Exception("Could not find start ID: {} in network.".format(inID))
-        else:
-            startPoint = startEdge.edge[1]
 
         if outID:
             endEdge = self.findEdgewithID(outID)
@@ -200,36 +176,67 @@ class Profile():
                 raise Exception("Could not find end ID: {} in network.".format(outID))
             else:
                 endPoint = endEdge.edge[1]
+
+
             # Make a depth-first tree from the first headwater we find
             try:
-                # Get all possible paths
-                paths = [path for path in nx.all_simple_paths(self.G, source=startPoint, target=endPoint)]
-                # Remove duplicate traversal paths (we need to recalc them later recursively)
-                paths = [x for i, x in enumerate(paths) if i == paths.index(x)]
-
-                # Zip up the edge pairs and add the FIDs back
-                pathedges = [prepareEdges(self.G, zip(path, path[1:])) for path in paths]
-
-                # There may be multiple paths so we need to find indices
-                for edges in pathedges:
-                    recursivePathFinder(edges, path=[(startEdge.edge, inID)])
-
+                self._findSimplePaths(startEdge, endEdge)
             except Exception, e:
-                print e.message
                 raise Exception("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
         else:
             # This is a "FIND THE OUTFLOW" case where a B point isn't specified
             try:
-                edges = list(nx.dfs_edges(self.G, startPoint))
-                edges = prepareEdges(self.G, edges)
-                recursivePathFinder(edges, path=[(startEdge.edge, inID)])
+                outflowEdges = self._getTerminalEdges(startEdge.edge[1])
+
+                # Now just get a list of all the outflow points
+                for outEdge in outflowEdges:
+                    self._findSimplePaths(startEdge, outEdge)
 
             except Exception, e:
-                print e.message
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
 
+    def _prepareEdges(self, edges):
+        """
+        Helper function to marry fids with NetworkX edges
+        :param edges:
+        :return:
+        """
+        return [EdgeObj(edge, self.G.get_edge_data(*edge).keys()) for edge in edges]
 
-    def qgsLayertoNX(self, shapelayer, simplify=True, geom_attrs=True):
+    def _getTerminalEdges(self, startPt):
+        """
+        Do a DFS on a tree and return all edges that are considered terminal (no downstream neighbours)
+        :param startPt:
+        :return:
+        """
+        edges = list(nx.dfs_edges(self.G, startPt))
+        edges = self._prepareEdges(self.G, edges)
+
+        return [edge.edge[1] for edge in edges if self.G.neighbors(edge.edge[1]) == 0]
+
+
+    def _findSimplePaths(self, startEdge, endEdge):
+        """
+        Abstraction for nx.all_simple_paths
+        :param startEdge:
+        :param endEdge:
+        :return:
+        """
+
+        # Get all possible paths
+        paths = [path for path in nx.all_simple_paths(self.G, source=startEdge.edge[1], target=endEdge.edge[0])]
+        # Remove duplicate traversal paths (we need to recalc them later recursively)
+        paths = [x for i, x in enumerate(paths) if i == paths.index(x)]
+
+        # Zip up the edge pairs and add the FIDs back
+        pathedges = [self._prepareEdges(zip(path, path[1:])) for path in paths]
+
+        # There may be multiple paths so we need to find indices
+        for edges in pathedges:
+            self._recursivePathFinder(edges, [EdgeObj(startEdge.edge, startEdge.fid)])
+
+
+    def _qgsLayertoNX(self, shapelayer, simplify=True, geom_attrs=True):
         """
         THIS IS a re-purposed version of load_shp from nx
         :param shapelayer:
@@ -271,6 +278,33 @@ class Profile():
                 raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
                                   format(QgsWKBTypes.displayString(int(g.wkbType()))))
 
+
+    def _recursivePathFinder(self, edges, path=[]):
+        """
+        Help us find all the different paths with a given combination of nodes
+        :return:
+        """
+        newpath = path[:]
+
+        def getNext(eobjs, lastedge):
+            return [EdgeObj(eobj[0], fid) for eobj in eobjs for fid in eobj.fid if eobj.edge[0] == lastedge.edge[1]]
+
+        # A branch could be a real node branch or a duplicate edge
+        nextEdges = getNext(edges, newpath[-1])
+
+        # Continue along a straight edge as far as we can until we end or find a fork
+        while len(nextEdges) == 1:
+            newpath.append(nextEdges[0])
+            # A branch could be a real node branch or a duplicate edge (same as above)
+            nextEdges = getNext(edges, newpath[-1])
+
+        if len(nextEdges) == 0:
+            self.paths.append(newpath)
+        else:
+            # Here is the end or a fork
+            for edge in nextEdges:
+                if choice is None or choice:
+                    self._recursivePathFinder(edges, newpath + [edge])
 
 
     def edges_from_line(self, geom, attrs, simplify=True, geom_attrs=True):
@@ -334,10 +368,6 @@ class Profile():
                 break
 
         return foundEdge
-        # def anyNodePairs(np, nid):
-        #     return next(iter([(np, k, attr) for k, attr in self.G.get_edge_data(*np).iteritems() if attr[self.idField] == nid]), None)
-        #
-        # return next(iter([anyNodePairs(np, id) for np in self.G.edges_iter()]), None)
 
     def logInfo(self, msg):
         if self.msgcallback:

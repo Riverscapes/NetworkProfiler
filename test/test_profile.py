@@ -1,10 +1,11 @@
 from unittest import TestCase
-from profiler import Profile
 
+from engine.profiler import Profile
 from utilities import get_qgis_app
+
 QGIS_APP = get_qgis_app()
 
-from qgis.core import QgsVectorLayer, QgsMapLayerRegistry
+from qgis.core import QgsVectorLayer
 from os import path
 
 class TestProfiler(TestCase):
@@ -78,11 +79,21 @@ class TestProfiler(TestCase):
         self.nxProfile.pathfinder(10, 8)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [])
 
+        # Circle
+        self.nxProfile.pathfinder(13, 15)
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[13, 14, 15]])
+
         # Start to outflow point
         self.nxProfile.pathfinder(8)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
 
         # Test "find outflow" with multiple paths
+        self.nxProfile.pathfinder(24,28)
+        print self.nxProfile.getPathEdgeIds()
+        self.nxProfile.pathfinder(23,28)
+        print self.nxProfile.getPathEdgeIds()
+
+
         self.nxProfile.pathfinder(22)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22,24,25,27,28],[22,23,26,27,28]])
 
@@ -90,11 +101,6 @@ class TestProfiler(TestCase):
         self.nxProfile.pathfinder(35)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[35,36,37],[35,38,39]])
 
-
-
-
-        # Circle
-        singlePathBackward = self.nxProfile.pathfinder(13, 15)
 
         self.fail()
 
