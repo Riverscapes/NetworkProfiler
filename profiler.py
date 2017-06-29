@@ -6,7 +6,10 @@ import logging
 from collections import namedtuple
 from shapely.geometry import *
 
-EdgeObj = namedtuple('EdgeObj', ['edge', 'shpfields','calcfields'], verbose=True)
+"""
+We invented a special kind of tuple to handle all the different properties of an "Edge"
+"""
+EdgeObj = namedtuple('EdgeObj', ['edge', 'fid'], verbose=True)
 
 class Profile():
 
@@ -26,9 +29,12 @@ class Profile():
         self.msgcallback = msgcallback
         self.idField = "_FID_"
         self.logmsgs = []
+
+        self.paths = []
+        self.features = {}
+
         # Convert QgsLayer to NX graph
         self.qgsLayertoNX(shpLayer, simplify=True)
-        self.paths = []
 
     def writeCSV(self, filename, cols=None):
         """
@@ -111,23 +117,41 @@ class Profile():
             writer.writerows(results)
         self.logInfo("Done Writing CSV")
 
+    def getPathEdgeIds(self):
+        """
+        Get the FIDs of all the paths in the object
+        :return:
+        """
+        ids = []
+        for path in self.paths:
+            ids.append([idx[1] for idx in path])
+        return ids
+
     def _calcfields(self, edges):
+        """
+        These are fields that need to be calculated.
+        :param edges:
+        :return:
+        """
         path = []
 
         cummulativelength = 0
         for idx, edge in enumerate(edges):
             # Get the ID for this edge
-            attrField = list(filter(lambda x: x.lower() not in ['json', 'wkb', 'wkt'], self.G.get_edge_data(*edge)))
+            attrFields ={}
+            attrCalc = {}
+            attrFields = {k: v for k, v in self.G.get_edge_data(*edge).iteritems() if k.lower() not in ['json', 'wkb', 'wkt']}
 
             attrCalc = {}
-            attrCalc['ProfileCalculatedLength'] = attrField['_calc_length_']
+            attrCalc['ProfileCalculatedLength'] = attrFields['_calc_length_']
             cummulativelength += attrCalc['ProfileCalculatedLength']
             attrCalc['ProfileCummulativeLength'] = cummulativelength
             attrCalc['ProfileID'] = idx + 1
             # Calculate length and cumulative length
-            path.append(EdgeObj(edge, attrField, attrCalc))
+            # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'KIndex', 'Attr', 'CalcAttr'], verbose=True)
+            path.append(EdgeObj(edge, attrFields, attrCalc))
 
-        self.paths.append(path)
+        return path
 
 
     def pathfinder(self, inID, outID=None):
@@ -139,29 +163,71 @@ class Profile():
         :return:
         """
         self.paths = []
-        startNode = self.findnodewithID(inID)
+        startEdge = self.findEdgewithID(inID)
 
-        if not startNode:
+        def prepareEdges(G, edges):
+            return [(edge, G.get_edge_data(*edge).keys()) for edge in edges]
+
+        def recursivePathFinder(edges, index=0, path=[]):
+            """
+            Help us find all the different paths with a given combination of nodes
+            :return:
+            """
+            newpath = path[:]
+
+            # Continue along a straight edge as far as we can until we end or find a fork
+            while index < len(edges) and len(edges[index][1]) < 2:
+                newpath.append((edges[index], edges[index][1][0]))
+                index += 1
+
+            if index >= len(edges):
+                self.paths.append(newpath)
+            else:
+                # Here is the end or a fork
+                for fid in edges[index][1]:
+                    newEdge = [(edges[index], fid)]
+                    recursivePathFinder(edges, index+1, newpath + newEdge)
+
+
+        if not startEdge:
             raise Exception("Could not find start ID: {} in network.".format(inID))
+        else:
+            startPoint = startEdge.edge[1]
 
         if outID:
-            endNode = self.findnodewithID(outID)
-            if not endNode:
+            endEdge = self.findEdgewithID(outID)
+            if not endEdge:
                 raise Exception("Could not find end ID: {} in network.".format(outID))
+            else:
+                endPoint = endEdge.edge[1]
             # Make a depth-first tree from the first headwater we find
             try:
-                for path in nx.all_simple_paths(self.G, source=startNode[0], target=endNode[1]):
-                    edges = zip(path, path[1:])
-                    self.paths.append(self._calcfields(edges))
+                # Get all possible paths
+                paths = [path for path in nx.all_simple_paths(self.G, source=startPoint, target=endPoint)]
+                # Remove duplicate traversal paths (we need to recalc them later recursively)
+                paths = [x for i, x in enumerate(paths) if i == paths.index(x)]
+
+                # Zip up the edge pairs and add the FIDs back
+                pathedges = [prepareEdges(self.G, zip(path, path[1:])) for path in paths]
+
+                # There may be multiple paths so we need to find indices
+                for edges in pathedges:
+                    recursivePathFinder(edges, path=[(startEdge.edge, inID)])
+
             except Exception, e:
+                print e.message
                 raise Exception("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
         else:
+            # This is a "FIND THE OUTFLOW" case where a B point isn't specified
             try:
-                path_edges = list(nx.dfs_edges(self.G, startNode[0]))
+                edges = list(nx.dfs_edges(self.G, startPoint))
+                edges = prepareEdges(self.G, edges)
+                recursivePathFinder(edges, path=[(startEdge.edge, inID)])
+
             except Exception, e:
+                print e.message
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
 
-        return path_edges
 
     def qgsLayertoNX(self, shapelayer, simplify=True, geom_attrs=True):
         """
@@ -173,31 +239,34 @@ class Profile():
         """
         self.logInfo("parsing shapefile into network...")
 
-        self.G = nx.DiGraph()
+        self.G = nx.MultiDiGraph()
         self.logInfo("Shapefile successfully parsed into directed network")
 
         for f in shapelayer.getFeatures():
+
             flddata = f.attributes()
             fields = [str(fi.name()) for fi in f.fields()]
 
             g = f.geometry()
-            attributes = dict(zip(fields, flddata))
-            # We add the _FID_ manually
-            attributes[self.idField] = f.id()
-            attributes['_calc_length_'] = g.length()
-
             # We don't care about M or Z
             g.geometry().dropMValue()
             g.geometry().dropZValue()
 
+            attributes = dict(zip(fields, flddata))
+            # We add the _FID_ manually
+            fid = int(f.id())
+            attributes[self.idField] = fid
+            attributes['_calc_length_'] = g.length()
+
             # Note:  Using layer level geometry type
             if g.wkbType() == QgsWKBTypes.Point:
-                self.G.add_node(g.asPoint(), attributes)
+                self.features[fid] = attributes
+                self.G.add_node(g.asPoint())
             elif g.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
                 for edge in self.edges_from_line(g, attributes, simplify, geom_attrs):
                     e1, e2, attr = edge
-                    self.G.add_edge(e1, e2)
-                    self.G[e1][e2].update(attr)
+                    self.features[fid] = attr
+                    self.G.add_edge(e1, e2, key=attr[self.idField])
             else:
                 raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
                                   format(QgsWKBTypes.displayString(int(g.wkbType()))))
@@ -244,15 +313,31 @@ class Profile():
                     yield edge
 
 
-    def findnodewithID(self, id):
+    def findEdgewithID(self, id):
         """
-        One line helper function to find a node with a given ID
+        One line helper function to find an edge with a given ID
+        because the graph is a multiDiGraph there may be multiple edges for
+        each node pair so we need to return an index to which one we mean too
         :param id:
-        :return:
+        :return: ((edgetuple), edgeindex, attr)
         """
-        # for e in self.G.edges_iter():
-        #     data = self.G.get_edge_data(*e)
-        return next(iter([e for e in self.G.edges_iter() if self.G.get_edge_data(*e)[self.idField] == id]), None)
+        # [self.G.get_edge_data(*np) for np in self.G.edges_iter()]
+        foundEdge = None
+        for np in self.G.edges_iter():
+            for k in self.G.get_edge_data(*np).iterkeys():
+                if k == id:
+                    # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'fid'], verbose=True)
+                    foundEdge = EdgeObj(np, k)
+                    break
+
+            if foundEdge is not None:
+                break
+
+        return foundEdge
+        # def anyNodePairs(np, nid):
+        #     return next(iter([(np, k, attr) for k, attr in self.G.get_edge_data(*np).iteritems() if attr[self.idField] == nid]), None)
+        #
+        # return next(iter([anyNodePairs(np, id) for np in self.G.edges_iter()]), None)
 
     def logInfo(self, msg):
         if self.msgcallback:
