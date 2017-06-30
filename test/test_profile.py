@@ -29,17 +29,25 @@ class TestProfiler(TestCase):
         vlayer2 = QgsVectorLayer(uri, "LineStringZ_Layer", "ogr")
         lszProfile = Profile(self.vlayer)
 
-        self.assertTupleEqual(self.nxProfile.findEdgewithID(22), lszProfile.findnodewithID(22))
+        self.assertTupleEqual(self.nxProfile.findEdgewithID(22), lszProfile.findEdgewithID(22))
+
+    def test_getPathEdgeIds(self):
+        from engine.profiler import EdgeObj
+        self.nxProfile.paths = [[
+            EdgeObj(((0,1), (2,3)), 1),
+            EdgeObj(((2,3), (4,5)), 2),
+            EdgeObj(((4,5), (6,7)), 3),
+        ]]
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[1,2,3]])
 
     def test_findnodewithID(self):
         ptA = self.nxProfile.findEdgewithID(22)
-
         ptNone = self.nxProfile.findEdgewithID(9999)
 
-        self.assertAlmostEqual(ptA[0][0], -2.53887357711)
-        self.assertAlmostEqual(ptA[0][1],  1.56345777511)
-        self.assertAlmostEqual(ptA[1][0], -2.65314254760)
-        self.assertAlmostEqual(ptA[1][1],  1.02476119995)
+        self.assertAlmostEqual(ptA.edge[0][0], -2.53887357711)
+        self.assertAlmostEqual(ptA.edge[0][1],  1.56345777511)
+        self.assertAlmostEqual(ptA.edge[1][0], -2.65314254760)
+        self.assertAlmostEqual(ptA.edge[1][1],  1.02476119995)
 
         self.assertIsNone(ptNone)
 
@@ -63,6 +71,7 @@ class TestProfiler(TestCase):
         # Triple Path
         self.nxProfile.pathfinder(29, 34)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[29, 30, 33, 34], [29, 31, 33, 34], [29, 32, 34]])
+
         # Second Triple Path
         self.nxProfile.pathfinder(30, 34)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[30, 33, 34]])
@@ -88,21 +97,13 @@ class TestProfiler(TestCase):
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
 
         # Test "find outflow" with multiple paths
-        self.nxProfile.pathfinder(24,28)
-        print self.nxProfile.getPathEdgeIds()
-        self.nxProfile.pathfinder(23,28)
-        print self.nxProfile.getPathEdgeIds()
-
-
         self.nxProfile.pathfinder(22)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22,24,25,27,28],[22,23,26,27,28]])
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22,23,26,27,28],[22,24,25,27,28]])
 
         # Test "find outflow" with multiple outflows
         self.nxProfile.pathfinder(35)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[35,36,37],[35,38,39]])
 
-
-        self.fail()
 
     # def test_calcfields(self):
     #

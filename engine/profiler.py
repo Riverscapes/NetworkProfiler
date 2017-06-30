@@ -4,6 +4,7 @@ import ogr
 from qgis.core import *
 import logging
 from collections import namedtuple
+from pathchoice import PathChoice
 from shapely.geometry import *
 
 """
@@ -154,7 +155,7 @@ class Profile():
         return path
 
 
-    def pathfinder(self, inID, outID=None, choice=None):
+    def pathfinder(self, inID, outID=None, pathchoice=None):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -163,7 +164,7 @@ class Profile():
         :return:
         """
         self.paths = []
-        self.choice =choice
+        self.pathchoice = pathchoice
 
         startEdge = self.findEdgewithID(inID)
 
@@ -174,9 +175,6 @@ class Profile():
             endEdge = self.findEdgewithID(outID)
             if not endEdge:
                 raise Exception("Could not find end ID: {} in network.".format(outID))
-            else:
-                endPoint = endEdge.edge[1]
-
 
             # Make a depth-first tree from the first headwater we find
             try:
@@ -195,13 +193,13 @@ class Profile():
             except Exception, e:
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
 
-    def _prepareEdges(self, edges):
+    def _prepareEdges(self, rawedges):
         """
         Helper function to marry fids with NetworkX edges
-        :param edges:
+        :param rawedges: edge tuple we want to augment
         :return:
         """
-        return [EdgeObj(edge, self.G.get_edge_data(*edge).keys()) for edge in edges]
+        return [EdgeObj(edge, self.G.get_edge_data(*edge).keys()) for edge in rawedges]
 
     def _getTerminalEdges(self, startPt):
         """
@@ -210,9 +208,9 @@ class Profile():
         :return:
         """
         edges = list(nx.dfs_edges(self.G, startPt))
-        edges = self._prepareEdges(self.G, edges)
+        edges = self._prepareEdges(edges)
 
-        return [edge.edge[1] for edge in edges if self.G.neighbors(edge.edge[1]) == 0]
+        return [edge for edge in edges if len(self.G.neighbors(edge.edge[1])) == 0]
 
 
     def _findSimplePaths(self, startEdge, endEdge):
@@ -224,12 +222,12 @@ class Profile():
         """
 
         # Get all possible paths
-        paths = [path for path in nx.all_simple_paths(self.G, source=startEdge.edge[1], target=endEdge.edge[0])]
+        paths = [path for path in nx.all_simple_paths(self.G, source=startEdge.edge[1], target=endEdge.edge[1])]
         # Remove duplicate traversal paths (we need to recalc them later recursively)
-        paths = [x for i, x in enumerate(paths) if i == paths.index(x)]
+        nodupespaths = [x for i, x in enumerate(paths) if i == paths.index(x)]
 
         # Zip up the edge pairs and add the FIDs back
-        pathedges = [self._prepareEdges(zip(path, path[1:])) for path in paths]
+        pathedges = [self._prepareEdges(zip(path, path[1:])) for path in nodupespaths]
 
         # There may be multiple paths so we need to find indices
         for edges in pathedges:
@@ -254,29 +252,29 @@ class Profile():
             flddata = f.attributes()
             fields = [str(fi.name()) for fi in f.fields()]
 
-            g = f.geometry()
+            geo = f.geometry()
             # We don't care about M or Z
-            g.geometry().dropMValue()
-            g.geometry().dropZValue()
+            geo.geometry().dropMValue()
+            geo.geometry().dropZValue()
 
             attributes = dict(zip(fields, flddata))
             # We add the _FID_ manually
             fid = int(f.id())
             attributes[self.idField] = fid
-            attributes['_calc_length_'] = g.length()
+            attributes['_calc_length_'] = geo.length()
 
             # Note:  Using layer level geometry type
-            if g.wkbType() == QgsWKBTypes.Point:
+            if geo.wkbType() == QgsWKBTypes.Point:
                 self.features[fid] = attributes
-                self.G.add_node(g.asPoint())
-            elif g.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
-                for edge in self.edges_from_line(g, attributes, simplify, geom_attrs):
+                self.G.add_node(geo.asPoint())
+            elif geo.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
+                for edge in self.edges_from_line(geo, attributes, simplify, geom_attrs):
                     e1, e2, attr = edge
                     self.features[fid] = attr
                     self.G.add_edge(e1, e2, key=attr[self.idField])
             else:
                 raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
-                                  format(QgsWKBTypes.displayString(int(g.wkbType()))))
+                                  format(QgsWKBTypes.displayString(int(geo.wkbType()))))
 
 
     def _recursivePathFinder(self, edges, path=[]):
@@ -303,7 +301,7 @@ class Profile():
         else:
             # Here is the end or a fork
             for edge in nextEdges:
-                if choice is None or choice:
+                if self.pathchoice is None or self.pathchoice.test():
                     self._recursivePathFinder(edges, newpath + [edge])
 
 
