@@ -57,6 +57,15 @@ class NetworkProfiler:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
+        # Before we go too far make sure we have Boto3 installed
+        try:
+            import networkx
+        except ImportError:
+            from popupdialog import okDlg
+            from PyQt4.QtGui import QMessageBox
+            okDlg("NetworkX Not Installed",
+                  "You must have NetworkX installed for the Network Profiler to work. <br/>For Instructions on how to do this click <a href=\"https://networkx.github.io/documentation/development/install.html\">here</a>",
+                  icon=QMessageBox.Critical)
 
         # Declare instance attributes
         self.actions = []
