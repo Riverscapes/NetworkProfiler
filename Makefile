@@ -200,7 +200,7 @@ doc:
 	@echo "------------------------------------"
 	@echo "Building documentation using Jekyll."
 	@echo "------------------------------------"
-	cd help; jekyll build
+	cd docs; jekyll build
 
 pylint:
 	@echo
