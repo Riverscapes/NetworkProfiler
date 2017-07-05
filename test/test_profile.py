@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from engine.profiler import Profile
+from NetworkProfiler.profiler import Profile
 from utilities import get_qgis_app
 
 QGIS_APP = get_qgis_app()
@@ -32,7 +32,7 @@ class TestProfiler(TestCase):
         self.assertTupleEqual(self.nxProfile.findEdgewithID(22), lszProfile.findEdgewithID(22))
 
     def test_getPathEdgeIds(self):
-        from engine.profiler import EdgeObj
+        from NetworkProfiler.profiler import EdgeObj
         self.nxProfile.paths = [[
             EdgeObj(((0,1), (2,3)), 1),
             EdgeObj(((2,3), (4,5)), 2),

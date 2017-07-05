@@ -28,8 +28,8 @@ from PyQt4.QtCore import QVariant, Qt, QUrl
 from qgis.core import *
 from qgis.gui import *
 
-from debug import Debugger
-from engine.profiler import Profile
+from NetworkProfiler.debug import Debugger
+from NetworkProfiler.profiler import Profile
 
 HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
 FORM_CLASS, _ = uic.loadUiType(os.path.join(

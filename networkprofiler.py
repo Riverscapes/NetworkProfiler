@@ -20,13 +20,14 @@
  *                                                                         *
  ***************************************************************************/
 """
+import os.path
+
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon
+
 # Initialize Qt resources from file resources.py
-import resources
 # Import the code for the dialog
 from networkprofiler_dialog import NetworkProfilerDialog
-import os.path
 
 
 class NetworkProfiler:
@@ -61,7 +62,7 @@ class NetworkProfiler:
         try:
             import networkx
         except ImportError:
-            from popupdialog import okDlg
+            from NetworkProfiler.popupdialog import okDlg
             from PyQt4.QtGui import QMessageBox
             okDlg("NetworkX Not Installed",
                   "You must have NetworkX installed for the Network Profiler to work. <br/>For Instructions on how to do this click <a href=\"https://networkx.github.io/documentation/development/install.html\">here</a>",

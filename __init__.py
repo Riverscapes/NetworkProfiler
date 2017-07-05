@@ -25,9 +25,7 @@
 ######################### REMOTE DEBUG #########################
 # To activate remote debugging set DEBUG_PLUGIN=AnalystToolbar as a QGIS
 # Environment variable in Preferences -> System -> Environment
-import os
-import logging
-from debug import Debugger
+from NetworkProfiler.debug import Debugger
 debug = Debugger()
 ######################### /REMOTE DEBUG #########################
 
