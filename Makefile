@@ -61,7 +61,7 @@ PEP8EXCLUDE=pydev,resources.py,conf.py,third_party,ui
 # Normally you would not need to edit below here
 #################################################
 
-HELP = help/build/html
+HELP = docs/_site
 
 PLUGIN_UPLOAD = $(c)/plugin_upload.py
 
@@ -198,9 +198,9 @@ clean:
 doc:
 	@echo
 	@echo "------------------------------------"
-	@echo "Building documentation using sphinx."
+	@echo "Building documentation using Jekyll."
 	@echo "------------------------------------"
-	cd help; make html
+	cd help; jekyll build
 
 pylint:
 	@echo
