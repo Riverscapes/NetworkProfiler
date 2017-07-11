@@ -3,28 +3,47 @@ title: Home
 weight: 1
 ---
 
-The Riverscapes Analysis Viewer and Explorer (RAVE) is a [QGIS](http://www.qgis.org/en/site/) plugin you can use to interact with riverscapes data.
+This is a QGis python plugin that is designed to profile a particular stream network from a start point to an end point and output a CSV file.
 
-Using this tool you can:
+### Requirements
 
-* Browse the riverscapes data repository
-* Download and upload riverscapes projects
-* View riverscapes project data using the QGIS map viewer.
+You must have QGis installed. This plugin also requires `networkx`. Most QGis users should already have networkx installed but if you don't then you need to go get it:
 
-### Getting Started: 
+``` bash
+pip install networkx
+```
 
-1. [Quick Start Guide](quickstart.html)
-2. [Anatomy of the plugin](anatomy.html)
+### Plugin Installation:
 
-### Development
+Until this plugin is available on the plugin store you're going to need to install it manually.
 
-The RAVE plugin is under active development by [North Arrow Research](http://northarrowresearch.com) with contributions from [South Fork Research](http://southforkresearch.org) and the [Fluvial Habitats](http://fluvialhabitats.org) at Utah State University. Funding for these tools was provided by the Bonneville Power Administration (BPA Proposal # 2011-006-00 & BPA Project: 2003-017-00) and NOAA as part of the [Columbia Habitat Monitoring Program](http://www.champmonitoring.org/) (CHaMP).
+1. Make sure QGis is closed.
+2. Download this repo and unzip it into: `c:\Users\<USERNAME>\.qgis2\python\plugins\NetworkProfiler\`. If you see the file: `c:\Users\<USERNAME>\.qgis2\python\plugins\NetworkProfiler\README.md` you've done it right.
+3. Reload QGis and go to the plugins menu. You should be able to check the box next to network profiler.
 
-RAVE is scalable and intended to accommodate additional riverscapes projects over time. Model owners are encouraged to contact North Arrow Research if they want to integrate their model into the riverscapes framework. There are currently two things that model owners can contribute to the riverscapes project to help their projects be visible and usable within the RAVE plugin:
 
-* **[Symbolizing layers](Development/symbolizers.html)**: Create symbolizers so that layers of a certain type are always symbolized the same way when layers are added to the QGIS map window. There are mechanisms for both Raster and Vector symbolization.
-* **[Project Parsers](Development/businesslogic.html)**: This is a single XML file that determines how each project type gets parsed by the QGIS layer manager. Essentially it tells RAVE how to add project layers to the QGIS table of contents.
+### Steps to use the Profiler
 
-### License
+1. Open up the tool.
+2. You can either select a layer from the dropdown or use the grab button and the layer will be selected for you.
+3. Using the "QGis feature select tool" (Button: yellow square with marching ants and a white cursor) to select a single feature in the network that you want to use as your start point.
+4. Click the "Grab From Map Selection" button and you should see the field values get populated below.
+5. Select the fields you want to include in your CSV file. You should also select some kind of ID field (OBJECTID or FID) if you want to be able to identify your features afterwards
+6. Enter a path to the CSV file.
+6. Click the "Create Profile" button to continue. After 4-5 seconds you should get a success message
 
-Licensed under the [GNU General Public License Version 3](https://github.com/Riverscapes/RiverscapesToolbar/blob/master/LICENSE).
+### If you get errors:
+
+Please click the "more info" button. Feel free to send your shape files and errors to me directly or file a bug on this repo
+
+### Deploy
+
+1. `pb_tool zip`
+2. rename the zip to `NetworkProfiler-0.0.1.zip` CAREFUL OF VERSION
+3. upload it
+
+```
+aws s3 cp NetworkProfiler-0.0.1.zip s3://qgis.northarrowresearch.com/plugins/networkprofiler/
+```
+
+Now update the `Plugins.xml` wherever this is being served. Be sure to update the Version

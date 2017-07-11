@@ -15,7 +15,7 @@ EdgeObj = namedtuple('EdgeObj', ['edge', 'fid'], verbose=True)
 
 class Profile():
 
-    def __init__(self, shpLayer, msgcallback=None):
+    def __init__(self, shpLayer, pathChoice=None, msgcallback=None):
         """
         Profile a network from startID to endID
 
@@ -28,6 +28,9 @@ class Profile():
 
         self.logger = logging.getLogger('Profile')
         self.msgcallback = msgcallback
+        if pathChoice is None:
+            pathChoice = PathChoice()
+        self.pathchoice = pathChoice
         self.idField = "_FID_"
         self.logmsgs = []
 
@@ -141,7 +144,7 @@ class Profile():
             # Get the ID for this edge
             attrFields ={}
             attrCalc = {}
-            attrFields = {k: v for k, v in self.G.get_edge_data(*edge).iteritems() if k.lower() not in ['json', 'wkb', 'wkt']}
+            attrFields = { k: v for k, v in self.G.get_edge_data(*edge).iteritems() if k.lower() not in ['json', 'wkb', 'wkt'] }
 
             attrCalc = {}
             attrCalc['ProfileCalculatedLength'] = attrFields['_calc_length_']
@@ -155,7 +158,7 @@ class Profile():
         return path
 
 
-    def pathfinder(self, inID, outID=None, pathchoice=None):
+    def pathfinder(self, inID, outID=None):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -164,7 +167,6 @@ class Profile():
         :return:
         """
         self.paths = []
-        self.pathchoice = pathchoice
 
         startEdge = self.findEdgewithID(inID)
 
@@ -192,6 +194,10 @@ class Profile():
 
             except Exception, e:
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
+
+        # We're not always guaranteed to have both input and output points.
+        # Returning them helps us.
+        return (inID, outID)
 
     def _prepareEdges(self, rawedges):
         """
@@ -264,10 +270,7 @@ class Profile():
             attributes['_calc_length_'] = geo.length()
 
             # Note:  Using layer level geometry type
-            if geo.wkbType() == QgsWKBTypes.Point:
-                self.features[fid] = attributes
-                self.G.add_node(geo.asPoint())
-            elif geo.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
+            if geo.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
                 for edge in self.edges_from_line(geo, attributes, simplify, geom_attrs):
                     e1, e2, attr = edge
                     self.features[fid] = attr
@@ -287,6 +290,8 @@ class Profile():
         def getNext(eobjs, lastedge):
             return [EdgeObj(eobj[0], fid) for eobj in eobjs for fid in eobj.fid if eobj.edge[0] == lastedge.edge[1]]
 
+        # TODO: Choice maker and this doesn't need to be recursive anymore. Keep it or leave it?
+
         # A branch could be a real node branch or a duplicate edge
         nextEdges = getNext(edges, newpath[-1])
 
@@ -299,10 +304,13 @@ class Profile():
         if len(nextEdges) == 0:
             self.paths.append(newpath)
         else:
+            chosenEdge = self.pathchoice.choose(nextEdges)
+            self._recursivePathFinder(edges, newpath + [chosenEdge])
+
             # Here is the end or a fork
-            for edge in nextEdges:
-                if self.pathchoice is None or self.pathchoice.test():
-                    self._recursivePathFinder(edges, newpath + [edge])
+            # for edge in nextEdges:
+            #     if self.pathchoice is None or self.pathchoice.test():
+            #         self._recursivePathFinder(edges, newpath + [edge])
 
 
     def edges_from_line(self, geom, attrs, simplify=True, geom_attrs=True):

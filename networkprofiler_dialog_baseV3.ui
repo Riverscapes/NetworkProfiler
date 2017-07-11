@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>450</width>
-    <height>579</height>
+    <width>473</width>
+    <height>575</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,20 @@
      </property>
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
-       <widget class="QComboBox" name="cmbLayer"/>
+       <widget class="QComboBox" name="ctlLayer"/>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Go</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -72,14 +85,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="lblFrom">
+           <widget class="QLabel" name="label_6">
             <property name="text">
              <string>ID=123</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnGrabFrom">
+           <widget class="QPushButton" name="cmdGetReachFromMap">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -115,14 +128,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="lblTo">
+           <widget class="QLabel" name="label_7">
             <property name="text">
              <string>ID=123</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnGrabTo">
+           <widget class="QPushButton" name="pushButton">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -137,13 +150,6 @@
          </layout>
         </item>
        </layout>
-      </item>
-      <item>
-       <widget class="QLabel" name="lblFromToStatus">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>
@@ -163,14 +169,14 @@
       <item>
        <widget class="QLabel" name="label_9">
         <property name="text">
-         <string>Choose a rule for choosing a braid path:</string>
+         <string>Choose a field to use when traversing braids:</string>
         </property>
        </widget>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_6">
         <item>
-         <widget class="QComboBox" name="cmbPathChoose"/>
+         <widget class="QComboBox" name="comboBox"/>
         </item>
        </layout>
       </item>
@@ -180,23 +186,10 @@
          <enum>QLayout::SetDefaultConstraint</enum>
         </property>
         <item>
-         <widget class="QLabel" name="lblPathChooseField">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Field:</string>
-          </property>
-         </widget>
+         <widget class="QComboBox" name="comboBox_2"/>
         </item>
         <item>
-         <widget class="QComboBox" name="cmbPathChooseField"/>
-        </item>
-        <item>
-         <widget class="QLabel" name="lblPathChooseValue">
+         <widget class="QLabel" name="label_8">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
             <horstretch>0</horstretch>
@@ -209,7 +202,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="txtPathChooseValue">
+         <widget class="QLineEdit" name="lineEdit">
           <property name="enabled">
            <bool>false</bool>
           </property>
@@ -232,6 +225,22 @@
       <string>4. Select Fields to include in profile (csv) output:</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="font">
+         <font>
+          <pointsize>11</pointsize>
+          <italic>true</italic>
+         </font>
+        </property>
+        <property name="text">
+         <string>Remember: select a unique ID field so you can identify points in your CSV file</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QTreeWidget" name="treeFields">
         <property name="minimumSize">
@@ -268,30 +277,14 @@
         </column>
         <column>
          <property name="text">
-          <string>From</string>
+          <string>Point A</string>
          </property>
         </column>
         <column>
          <property name="text">
-          <string>To</string>
+          <string>Point B</string>
          </property>
         </column>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-          <italic>true</italic>
-         </font>
-        </property>
-        <property name="text">
-         <string>Remember: select a unique ID field so you can identify points in your CSV file</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
        </widget>
       </item>
      </layout>
@@ -300,7 +293,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
-      <widget class="QCheckBox" name="chkAddToMap">
+      <widget class="QCheckBox" name="checkBox">
        <property name="text">
         <string>Add output to map</string>
        </property>

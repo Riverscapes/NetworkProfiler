@@ -1,12 +1,6 @@
 from os import environ
 import logging
 
-# class DebuggerBorg(object):
-#     _shared_state = {}
-#     _initdone = False
-#
-#     def __init__(self):
-#         self.__dict__ = self._shared_state
 
 class Debugger():
     DEBUG = False
