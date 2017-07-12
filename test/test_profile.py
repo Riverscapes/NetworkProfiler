@@ -12,9 +12,11 @@ class TestProfiler(TestCase):
 
     def setUp(self):
         """Runs before each test."""
-        uri = path.join(path.dirname(__file__),'data','LineString.shp')
-        self.vlayer = QgsVectorLayer(uri, "LineString_Layer", "ogr")
-        self.nxProfile = Profile(self.vlayer)
+        uri = path.join(path.dirname(__file__),'data','StressTest.shp')
+        self.vlayer = QgsVectorLayer(uri, "StressTest_Layer", "ogr")
+        self.nxProfile = Profile(self.vlayer, None)
+
+
 
     def tearDown(self):
         """Runs after each test."""
@@ -25,11 +27,22 @@ class TestProfiler(TestCase):
         Make sure we can open Linestring Z types
         :return:
         """
-        uri = path.join(path.dirname(__file__),'data','LineStringZ.shp')
-        vlayer2 = QgsVectorLayer(uri, "LineStringZ_Layer", "ogr")
-        lszProfile = Profile(self.vlayer)
+        uri = path.join(path.dirname(__file__), 'data', 'LineString.shp')
+        uriZ = path.join(path.dirname(__file__),'data','LineStringZ.shp')
+        uriM = path.join(path.dirname(__file__), 'data', 'LineStringM.shp')
+        uriZM = path.join(path.dirname(__file__), 'data', 'LineStringZM.shp')
+        vlayer = QgsVectorLayer(uri, "StressTest_Layer", "ogr")
+        vlayerZ = QgsVectorLayer(uri, "StressTest_Layer", "ogr")
+        vlayerM = QgsVectorLayer(uri, "StressTest_Layer", "ogr")
+        vlayerZM = QgsVectorLayer(uri, "StressTest_Layer", "ogr")
+        lszProfile = Profile(vlayer)
+        lszProfileZ = Profile(vlayerZ)
+        lszProfileM = Profile(vlayerM)
+        lszProfileZM = Profile(vlayerZM)
 
-        self.assertTupleEqual(self.nxProfile.findEdgewithID(22), lszProfile.findEdgewithID(22))
+        self.assertTupleEqual(lszProfile.findEdgewithID(0), lszProfileZ.findEdgewithID(0))
+        self.assertTupleEqual(lszProfile.findEdgewithID(0), lszProfileM.findEdgewithID(0))
+        self.assertTupleEqual(lszProfile.findEdgewithID(0), lszProfileZM.findEdgewithID(0))
 
     def test_getPathEdgeIds(self):
         from NetworkProfiler.profiler import EdgeObj
@@ -105,6 +118,19 @@ class TestProfiler(TestCase):
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[35,36,37],[35,38,39]])
 
 
-    # def test_calcfields(self):
-    #
-    #     self.nxProfile.calcfields()
+    def test_segLength(self):
+        self.assertEqual(self.nxProfile._segLength(30), 0.48666221658771897)
+
+    def test_pathLength(self):
+        self.nxProfile.pathfinder(8, 10)
+        manual = self.nxProfile._segLength(8) + self.nxProfile._segLength(9) + self.nxProfile._segLength(10)
+        self.assertEqual(self.nxProfile._pathLength(self.nxProfile.paths[0]), manual)
+
+    def test_chooseEdges(self):
+        print "yay"
+
+    def test_choosebylength(self):
+        self.nxProfile.pathfinder(29, 34)
+
+        shortest = self.nxProfile._choosebylength()
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(shortest), [29, 30, 33, 34])

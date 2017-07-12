@@ -1,4 +1,6 @@
 from PyQt4 import QtGui
+from PyQt4.QtCore import QUrl
+
 
 
 def okDlg(txt, infoText="", detailsTxt=None, icon=QtGui.QMessageBox.Information):
@@ -31,3 +33,7 @@ def okDlg(txt, infoText="", detailsTxt=None, icon=QtGui.QMessageBox.Information)
     layout.addItem(horizontal_spacer, layout.rowCount(), 0, 1, layout.columnCount())
 
     msg.exec_()
+
+
+
+
