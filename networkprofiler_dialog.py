@@ -64,6 +64,13 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.appSelectedFields = []
         self.appSelectedObjects = []
 
+        # Braid choices are constant
+        self.cmbPathChoose.clear()
+        self.cmbPathChoose.addItem(Profile.CHOICE_SHORTEST)
+        self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_NOT_EMPTY)
+        self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_VALUE)
+        self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_NOT_VALUE)
+
         # Hook an event into the selection changed event to tell us if we can grab our object or not
         self.mapCanvas.layersChanged.connect(self.handlerLayerChange)
         self.mapCanvas.selectionChanged.connect(self.handlerSelectionChange)
@@ -72,12 +79,11 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmbLayer.currentIndexChanged.connect(self.cmbLayerChange)
 
         # Set up our button events
-        self.btnCreateProfile.clicked.connect(self.runProfilerAction)
+        self.btnCreateProfile.clicked.connect(self.saveProfile)
         self.btnGrabFrom.clicked.connect(self.autoPopulate)
         self.btnGrabTo.clicked.connect(self.autoPopulate)
         self.btnFlipFromTo.clicked.connect(self.flipFromTo)
 
-        self.btnCreateProfile.clicked.connect(self.runProfilerAction)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.openHelp)
 
@@ -293,13 +299,23 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     if value is not None:
                         item.setData(1, Qt.DisplayRole, value)
 
+    def recalcFieldOptions(self):
+        print "hello"
+
+    def recalcBraidOptions(self):
+
+        debugPrint( "recalcBraidOptions")
+
+
+
     def recalcGrabButton(self):
         """
         Set the Grab button to be disabled for all but one case
         :return:
         """
         print "recalcGrabButton"
-        self.cmdGetReachFromMap.setEnabled(False)
+        self.btnGrabFrom.setEnabled(False)
+        self.btnGrabTo.setEnabled(False)
         if len(self.mapSelectedObjects) > 1:
             self.setFromToStatus(
                 "You have {} features selected. To use the grab tool you must select only one.".format(
@@ -312,7 +328,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 self.setFromToStatus("Selected map object is captured above.")
             else:
                 self.setFromToStatus("New reach selected. Use the Grab button to populate the fields above")
-                self.cmdGetReachFromMap.setEnabled(True)
+                self.btnGrabFrom.setEnabled(True)
 
     """
     There are 3 kinds of change events we care about:
@@ -345,7 +361,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.getMapVectorLayerFields()
             self.stateUpdate()
 
-    def autoPopulate(self, event):
+    def autoPopulate(self, event=None):
         """
         This is the magic function that pulls values from the map selection
         :return:
@@ -397,7 +413,7 @@ def debugPrint(msg):
     :param msg:
     :return:
     """
-    if DEBUG:
+    if Debugger.DEBUG is True:
         print "DEBUG: {}".format(msg)
 
 
