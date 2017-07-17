@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>450</width>
-    <height>579</height>
+    <height>595</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -180,7 +180,7 @@
       <item>
        <widget class="QLabel" name="label_9">
         <property name="text">
-         <string>Choose a rule for choosing a braid path:</string>
+         <string>When encountering a braid (fork):</string>
         </property>
        </widget>
       </item>

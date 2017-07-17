@@ -76,6 +76,7 @@ class TestProfiler(TestCase):
         # Test a single path. This is the simplest case
         self.nxProfile.pathfinder(8, 10)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
+        self.assert
 
         # Double Path
         self.nxProfile.pathfinder(22, 28)
@@ -97,10 +98,6 @@ class TestProfiler(TestCase):
         self.nxProfile.pathfinder(3, 2)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[3, 0, 1, 2]])
 
-        # Now test it backward
-        self.nxProfile.pathfinder(10, 8)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [])
-
         # Circle
         self.nxProfile.pathfinder(13, 15)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[13, 14, 15]])
@@ -117,6 +114,19 @@ class TestProfiler(TestCase):
         self.nxProfile.pathfinder(35)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[35,36,37],[35,38,39]])
 
+
+    def test_reverse_pathfinder(self):
+        """
+        If we pass in a backwards path then reverse it
+        :return:
+        """
+
+        # Test a single path. This is the simplest case
+        fromID,toID = self.nxProfile.pathfinder(10, 8)
+
+        self.assertEqual(fromID, 8)
+        self.assertEqual(toID, 10)
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
 
     def test_segLength(self):
         self.assertEqual(self.nxProfile._segLength(30), 0.48666221658771897)

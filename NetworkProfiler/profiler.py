@@ -93,7 +93,7 @@ class Profile():
         return path
 
 
-    def pathfinder(self, inID, outID=None):
+    def pathfinder(self, inID, outID=None, reversed=False):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -129,6 +129,12 @@ class Profile():
 
             except Exception, e:
                 raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
+
+        # No paths. try a reversal
+        if len(self.paths) == 0 and not reversed:
+            newIn, newOut = self.pathfinder(outID, inID)
+            if len(self.paths) > 0:
+                return (newIn, newOut)
 
         # We're not always guaranteed to have both input and output points.
         # Returning them helps us.

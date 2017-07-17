@@ -30,12 +30,11 @@ from qgis.gui import *
 
 from NetworkProfiler.debug import Debugger
 from NetworkProfiler.profiler import Profile
-from NetworkProfiler.popupdialog import okDlg
 from NetworkProfiler.plot import Plots
+from NetworkProfiler.popupdialog import okDlg
 
 HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'networkprofiler_dialog_base.ui'))
+FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), 'networkprofiler_dialog_base.ui'))
 
 class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -62,7 +61,11 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # Map States:
         self.appSelectedLayer = None
         self.appSelectedFields = []
-        self.appSelectedObjects = []
+        self.appFromID = None
+        self.appToID = None
+
+        self.lblFrom.setText("")
+        self.lblTo.setText("")
 
         # Braid choices are constant
         self.cmbPathChoose.clear()
@@ -70,22 +73,23 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_NOT_EMPTY)
         self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_VALUE)
         self.cmbPathChoose.addItem(Profile.CHOICE_FIELD_NOT_VALUE)
+        self.cmbPathChoose.currentIndexChanged.connect(self.recalcBraidRuleState)
 
         # Hook an event into the selection changed event to tell us if we can grab our object or not
-        self.mapCanvas.layersChanged.connect(self.handlerLayerChange)
-        self.mapCanvas.selectionChanged.connect(self.handlerSelectionChange)
+        self.mapCanvas.layersChanged.connect(self.handleMapLayerChange)
+        self.mapCanvas.selectionChanged.connect(self.handleMapSelectionChange)
 
         # Hook in a couple of control events for good measure
         self.cmbLayer.currentIndexChanged.connect(self.cmbLayerChange)
 
         # Set up our button events
         self.btnCreateProfile.clicked.connect(self.saveProfile)
-        self.btnGrabFrom.clicked.connect(self.autoPopulate)
-        self.btnGrabTo.clicked.connect(self.autoPopulate)
+        self.btnGrabFrom.clicked.connect(self.grabFrom)
+        self.btnGrabTo.clicked.connect(self.grabTo)
         self.btnFlipFromTo.clicked.connect(self.flipFromTo)
 
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
-        self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.openHelp)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.actionOpenHelp)
 
         # When to recalc app state. Choose these carefully. They run a lot.
         self.cmbLayer.currentIndexChanged.connect(self.stateUpdate)
@@ -93,129 +97,95 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmbPathChooseField.currentIndexChanged.connect(self.stateUpdate)
         self.txtPathChooseValue.textChanged.connect(self.stateUpdate)
 
+        self.loadPopulate()
 
-    def openHelp(self):
-        QtGui.QDesktopServices.openUrl(QUrl(HELP_URL))
+    """
+    
+    Direct Actions caused by events like clicks    
+    
+    Actions trigger a downward cascade of effectss
+    
+    """
 
-    def flipFromTo(self):
-        print "hello"
+    def loadPopulate(self, event=None):
+        """
+        This is the magic function that pulls values from the map selection
+        when the form loads
+        :return:
+        """
+
+        # TODO: distinguish between from and to calls and do the right thing. If neither, try to do both
+
+        debugPrint( "loadPopulate")
+        self.setAppVectorLayerFromMap()
+        self.recalcVectorLayerFields()
+        self.resetAppSelectedObjects()
+        self.recalcBraidRuleState()
         self.stateUpdate()
 
-    def showEvent(self, event):
-        super(NetworkProfilerDialog, self).showEvent(event)
-        # Trigger a recalc of everything the first time
-        # Now autopopulate values if we can
-        debugPrint("SHOW EVENT")
-        self.handlerLayerChange()
-        self.handlerSelectionChange()
-        self.autoPopulate()
+    def cmbLayerChange(self):
+        if self.isVisible():
+            debugPrint( "cmbLayerChange")
+            self.recalcVectorLayerFields()
+            self.getMapVectorLayerFields()
+            self.createProfile()
 
-    def createProfile(self, event):
+    def grabFrom(self):
+        self.appFromID = self.mapSelectedObjects[0][0].id()
+        self.runProfile()
+        self.updateReachLabels()
+
+    def grabTo(self):
+        self.appToID = self.mapSelectedObjects[0][0].id()
+        self.runProfile()
+        self.updateReachLabels()
+
+    def flipFromTo(self):
+        fromID = self.appFromID
+        toID = self.appToID
+
+        self.appFromID = toID
+        self.appToID = fromID
+
+        self.updateReachLabels()
+
+    def actionOpenHelp(self):
+        QtGui.QDesktopServices.openUrl(QUrl(HELP_URL))
+
+    """
+    
+    Indirect and biproduct actions
+    
+    """
+
+    def handleMapSelectionChange(self):
         """
-        We instantiate the class and do basic pathfinding a bunch of different times before
-        we actually save the file
-        :param event:
+        Triggered when the map selection changes
         :return:
         """
-        debugPrint("Run Event")
-        selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+        if self.isVisible():
+            debugPrint( "handleMapSelectionChange")
+            self.getSelectedMapObjects()
+            self.stateUpdate()
 
-        # What do I need to run the profiler
-        obStartID = int(self.appSelectedObjects[0][0].id())
-
-        theProfile = None
-        try:
-            self.theProfile = Profile(selectedLayer, msgcallback=self.setFromToStatus)
-        except Exception as e:
-            if theProfile is not None and theProfile.logmsgs is not None:
-                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(theProfile.logmsgs), str(e))
-                self.okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
-            else:
-                detailstxt = "Exception:\n=====================\n{0}".format(str(e))
-                self.okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
-                return
-
-
-        # TODO: None == All. This might need to be revisited
-        if len(self.treeFields.selectedIndexes()) == 0:
-            self.treeFields.selectAll()
-
-    def saveProfile(self, event):
+    def handleMapLayerChange(self):
         """
-        Write our file to nice outputs on the hard drive
-        :param event:
+        Triggered when new layers are added or removed from the map
         :return:
         """
+        if self.isVisible():
+            debugPrint( "handleMapLayerChange")
+            # Get the data from the maps
+            self.getMapVectorLayers()
+            self.getMapVectorLayerFields()
 
-        cols = [str(idx.data(0, Qt.DisplayRole)) for idx in self.treeFields.selectedItems()]
+            # Now repopulate the dropdowns
+            self.recalcVectorLayers()
 
-        # Now write to CSV
-        try:
-            outputdir = QtGui.QFileDialog.getSaveFileName(self, "Output File", "ProfileOutput.csv", "CSV File (*.csv);;All files (*)")
+    def updateReachLabels(self):
+        self.lblFrom.setText("ID: {}".format(self.appFromID))
+        self.lblTo.setText("ID: {}".format(self.appToID))
 
-            #TODO: if dir exists prompt for overwrite
-            #TODO: if dir doesn't exist, create it.
-
-            # TODO: Output log file
-            # - Details about when this was run. Inputs and outputs
-            # - Details about the traversal.
-            csvpath = os.path.join(outputdir, "profile.csv")
-            logpath = os.path.join(outputdir, "profile.log")
-            plotspath = os.path.join(outputdir, "plots")
-
-            self.theProfile.writeCSV(self.txtCSVOutput.text(), cols)
-            self.okDlg("Completed:", infoText="CSV file written: {}".format(self.txtCSVOutput.text()))
-
-            plots = Plots(csvpath, plotspath)
-            plots.createPlots()
-
-            # Write a file with some information about what just happened
-            with open(logpath, 'w') as f:
-                f.write("Inputs:\n==========================================\n\n")
-
-                f.write("Profile:\n==========================================\n\n")
-                f.writelines(self.theProfile.logmsgs)
-                f.write("Path:\n==========================================\n\n")
-                f.writelines(self.theProfile.logmsgs)
-
-        except Exception as e:
-            detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(theProfile.logmsgs), str(e))
-            self.okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
-
-
-    def setFromToStatus(self, text="", color='black'):
-        debugPrint("Set Label event")
-        self.lblFromToStatus.setText(text)
-        self.lblFromToStatus.setStyleSheet('QLabel { color: ' + color + ' }')
-
-    def recalcVectorLayerFields(self):
-        """
-        Get current layer index and then repopulate the dropdowns accordingly
-        :return:
-        """
-        debugPrint( "recalcVectorLayerFields")
-        selLayerData = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
-        selLayerObj = None
-        for obj in self.mapVectorLayers:
-            if selLayerData == obj['layer']:
-                selLayerObj = obj
-
-        if selLayerObj is not None:
-            self.treeFields.setEnabled(True)
-
-            # Populate the list of fields to use
-            self.treeFields.clear()
-            for field in selLayerObj['fields']:
-                # QTreeWidget / View
-                row = [field.name(), ""]
-                item = QtGui.QTreeWidgetItem(self.treeFields, row)
-
-            # Select all by default.
-            if len(self.treeFields.selectedIndexes()) == 0:
-                self.treeFields.selectAll()
-
-        else:
-            self.treeFields.setEnabled(False)
 
     def recalcVectorLayers(self):
         """
@@ -235,19 +205,56 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         else:
             self.setAppVectorLayerFromMap()
 
-    def setAppVectorLayerFromMap(self):
+    def recalcBraidRuleState(self):
         """
-        Set the current map layer in the dropdown from whatever layer is selected on the map
+        The braid choices are a little logic-y so we need to enable/disable some of the controls
+        :return:
         """
-        debugPrint( "setAppVectorLayerFromMap")
-        currLayer = self.mapCanvas.currentLayer()
-        selMapLayerIndex = self.cmbLayer.findData(currLayer)
+        currentSelection = self.cmbPathChoose.currentText()
 
-        if selMapLayerIndex > -1:
-            self.cmbLayer.setCurrentIndex(selMapLayerIndex)
-            # Set the selection independent of the control so if the map changes
-            # we'll retain it.
-            self.appSelectedLayer = self.cmbLayer.itemData(selMapLayerIndex)
+        self.txtPathChooseValue.setEnabled(False)
+        # self.lblPathChooseValue.enabled(False)
+        self.cmbPathChooseField.setEnabled(False)
+        # self.lblPathChooseField.enabled(True)
+        if currentSelection != Profile.CHOICE_SHORTEST:
+            self.cmbPathChooseField.setEnabled(True)
+            # self.lblPathChooseField.enabled(True)
+        if currentSelection == Profile.CHOICE_FIELD_NOT_VALUE or currentSelection == Profile.CHOICE_FIELD_VALUE:
+            self.txtPathChooseValue.setEnabled(True)
+
+
+    def recalcVectorLayerFields(self):
+        """
+        Get current layer index and then repopulate the dropdowns accordingly
+        :return:
+        """
+        debugPrint( "recalcVectorLayerFields")
+        selLayerData = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+        selLayerObj = None
+        for obj in self.mapVectorLayers:
+            if selLayerData == obj['layer']:
+                selLayerObj = obj
+
+        # Now add tree objects for each field
+        # Also populate the field dropdown in the path chooser
+        if selLayerObj is not None:
+            self.treeFields.setEnabled(True)
+
+            # Populate the list of fields to use
+            self.treeFields.clear()
+            self.cmbPathChooseField.clear()
+            for field in selLayerObj['fields']:
+                # QTreeWidget / View
+                row = [field.name(), "", ""]
+                item = QtGui.QTreeWidgetItem(self.treeFields, row)
+                self.cmbPathChooseField.addItem(field.name())
+
+            # Select all by default.
+            if len(self.treeFields.selectedIndexes()) == 0:
+                self.treeFields.selectAll()
+
+        else:
+            self.treeFields.setEnabled(False)
 
     def getMapVectorLayerFields(self):
         """recalcReachValues each layer and identify the int fields
@@ -273,7 +280,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         enabled = True
         if self.cmbLayer.count() == 0 or self.cmbLayer.currentIndex() < 0:
             enabled = False
-        if len(self.appSelectedObjects) == 0:
+        if self.appFromID is None or self.appToID is None:
             enabled = False
         if len(self.treeFields.selectedIndexes()) == 0:
             enabled = False
@@ -284,96 +291,44 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         Set the reach ID field in the UI
         """
-        debugPrint( "recalcReachValues")
-        self.appSelectedObjects = []
-        if len(self.mapSelectedObjects) == 1:
-            self.appSelectedObjects.append(self.mapSelectedObjects[0])
 
-            treeroot = self.treeFields.invisibleRootItem()
-            child_count = treeroot.childCount()
-            for i in range(child_count):
-                item = treeroot.child(i)
-                fieldidx = self.mapSelectedObjects[0][0].fields().indexFromName(item.data(0, 0))
-                if fieldidx > -1:
-                    value = self.appSelectedObjects[0][0].attributes()[fieldidx]
-                    if value is not None:
-                        item.setData(1, Qt.DisplayRole, value)
+        if self.appFromID is None and len(self.mapSelectedObjects) > 0:
+            self.appFromID = self.mapSelectedObjects[0][0].id()
+
+        if self.appToID is None and len(self.mapSelectedObjects) > 1:
+            self.appToID = self.mapSelectedObjects[1][0].id()
+
+        self.runProfile()
+        self.updateReachLabels()
+
 
     def recalcFieldOptions(self):
         print "hello"
 
-    def recalcBraidOptions(self):
 
-        debugPrint( "recalcBraidOptions")
-
-
-
-    def recalcGrabButton(self):
+    def recalcGrabButtons(self):
         """
         Set the Grab button to be disabled for all but one case
         :return:
         """
-        print "recalcGrabButton"
+
         self.btnGrabFrom.setEnabled(False)
         self.btnGrabTo.setEnabled(False)
+
         if len(self.mapSelectedObjects) > 1:
-            self.setFromToStatus(
+            self.setFromToMsg(
                 "You have {} features selected. To use the grab tool you must select only one.".format(
                     len(self.mapSelectedObjects)))
         elif len(self.mapSelectedObjects) == 0:
-            self.setFromToStatus("You have 0 features selected. To use the grab tool you must select at least one.".format(
+            self.setFromToMsg("You have 0 features selected. To use the grab tool you must select at least one.".format(
                 len(self.mapSelectedObjects)))
         else:
-            if len(self.appSelectedObjects) > 0 and self.mapSelectedObjects[0][0].id() == self.appSelectedObjects[0][0].id():
-                self.setFromToStatus("Selected map object is captured above.")
-            else:
-                self.setFromToStatus("New reach selected. Use the Grab button to populate the fields above")
+            if self.appFromID is None or self.mapSelectedObjects[0][0].id() != self.appFromID:
                 self.btnGrabFrom.setEnabled(True)
 
-    """
-    There are 3 kinds of change events we care about:
-        1. the layer changes
-        2. the selection changes
-        3. the app changes
+            if self.appToID is None or self.mapSelectedObjects[0][0].id() != self.appToID:
+                self.btnGrabTo.setEnabled(True)
 
-    These methods should be REALLY simple. No logic at all please.
-    """
-    def handlerLayerChange(self):
-        if self.isVisible():
-            debugPrint( "handlerLayerChange")
-            # Get the data from the maps
-            self.getMapVectorLayers()
-            self.getMapVectorLayerFields()
-
-            # Now repopulate the dropdowns
-            self.recalcVectorLayers()
-
-    def handlerSelectionChange(self):
-        if self.isVisible():
-            debugPrint( "handlerSelectionChange")
-            self.getSelectedMapObjects()
-            self.stateUpdate()
-
-    def cmbLayerChange(self):
-        if self.isVisible():
-            debugPrint( "cmbLayerChange")
-            self.recalcVectorLayerFields()
-            self.getMapVectorLayerFields()
-            self.stateUpdate()
-
-    def autoPopulate(self, event=None):
-        """
-        This is the magic function that pulls values from the map selection
-        :return:
-        """
-
-        # TODO: distinguish between from and to calls and do the right thing. If neither, try to do both
-
-        debugPrint( "autoPopulate")
-        self.setAppVectorLayerFromMap()
-        self.recalcVectorLayerFields()
-        self.resetAppSelectedObjects()
-        self.stateUpdate()
 
     def stateUpdate(self):
         """
@@ -381,14 +336,142 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :return:
         """
         debugPrint( "stateUpdate")
-        self.recalcGrabButton()
-        self.recalcBraidOptions()
+        self.recalcGrabButtons()
         self.recalcFieldOptions()
         self.recalcGoButton()
 
+
     """
-    MAP HELPERS
+    
+    Profile functions to do with the profile class
+    
     """
+
+
+    def createProfile(self):
+        """
+        The create profile transforms the SHP file into a networkX object for future
+        processing
+        :param event:
+        :return:
+        """
+        debugPrint("Run Event")
+        selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+
+        self.theProfile = None
+
+        try:
+            self.theProfile = Profile(selectedLayer, msgcallback=self.setFromToMsg)
+        except Exception as e:
+            if self.theProfile is not None and self.theProfile.logmsgs is not None:
+                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+                okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+            else:
+                detailstxt = "Exception:\n=====================\n{0}".format(str(e))
+                okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+                return
+
+    def runProfile(self):
+        """
+        Run profile does the pathfinding and reports back
+        We do basic pathfinding a bunch of different times before
+        we actually save the file. We may do this multiple times so it makes sense for this
+        to be as fast as humanly possible
+        :param event:
+        :return:
+        """
+        if self.theProfile is None:
+            self.createProfile()
+
+        try:
+            self.appFromID, self.appToID = self.theProfile.pathfinder(self.appFromID, self.appToID)
+        except Exception as e:
+            if self.theProfile is not None and self.theProfile.logmsgs is not None:
+                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+                okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+            else:
+                detailstxt = "Exception:\n=====================\n{0}".format(str(e))
+                okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+                return
+
+    def saveProfile(self):
+        """
+        Write our file to nice outputs on the hard drive
+        :param event:
+        :return:
+        """
+
+        if len(self.treeFields.selectedIndexes()) == 0:
+            self.treeFields.selectAll()
+
+        cols = [str(idx.data(0, Qt.DisplayRole)) for idx in self.treeFields.selectedItems()]
+
+        # Now write to CSV
+        try:
+            outputdir = QtGui.QFileDialog.getSaveFileName(self, "Output File", "ProfileOutput.csv", "CSV File (*.csv);;All files (*)")
+
+            #TODO: if dir exists prompt for overwrite
+            #TODO: if dir doesn't exist, create it.
+
+            # TODO: Output log file
+            # - Details about when this was run. Inputs and outputs
+            # - Details about the traversal.
+            csvpath = os.path.join(outputdir, "profile.csv")
+            logpath = os.path.join(outputdir, "profile.log")
+            plotspath = os.path.join(outputdir, "plots")
+
+            self.theProfile.writeCSV(self.txtCSVOutput.text(), cols)
+            okDlg("Completed:", infoText="CSV file written: {}".format(self.txtCSVOutput.text()))
+
+            plots = Plots(csvpath, plotspath)
+            plots.createPlots()
+
+            # Write a file with some information about what just happened
+            with open(logpath, 'w') as f:
+                f.write("Inputs:\n==========================================\n\n")
+
+                f.write("Profile:\n==========================================\n\n")
+                f.writelines(self.theProfile.logmsgs)
+                f.write("Path:\n==========================================\n\n")
+                f.writelines(self.theProfile.logmsgs)
+
+        except Exception as e:
+            detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+            okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
+
+
+    """
+    
+    Helper Functions
+    
+    """
+
+    def setFromToMsg(self, text="", color='black'):
+        """
+        Give us some helpful text about grabbing map objects
+        :param text:
+        :param color:
+        :return:
+        """
+        debugPrint("Set Label event")
+        self.lblFromToStatus.setText(text)
+        self.lblFromToStatus.setStyleSheet('QLabel { color: ' + color + ' }')
+
+    def setAppVectorLayerFromMap(self):
+        """
+        Set the current map layer in the dropdown from whatever layer is selected on the map
+        """
+        debugPrint( "setAppVectorLayerFromMap")
+        currLayer = self.mapCanvas.currentLayer()
+        selMapLayerIndex = self.cmbLayer.findData(currLayer)
+
+        if selMapLayerIndex > -1:
+            self.cmbLayer.setCurrentIndex(selMapLayerIndex)
+            # Set the selection independent of the control so if the map changes
+            # we'll retain it.
+            self.appSelectedLayer = self.cmbLayer.itemData(selMapLayerIndex)
+
+
     def getSelectedMapObjects(self):
         """
         Get a helpful list of selected objects on the map
@@ -403,7 +486,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
     def getMapVectorLayers(self):
         self.mapVectorLayers = [{'layer':layer} for layer in self.mapCanvas.layers() if type(layer) is QgsVectorLayer]
-
 
 
 def debugPrint(msg):
