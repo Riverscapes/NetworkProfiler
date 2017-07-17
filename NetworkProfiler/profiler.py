@@ -9,15 +9,16 @@ from shapely import wkb
 """
 We invented a special kind of tuple to handle all the different properties of an "Edge"
 """
+
 EdgeObj = namedtuple('EdgeObj', ['edge', 'fid'])
 
 
 class Profile():
 
-    CHOICE_SHORTEST = "Shortest Path Length"
-    CHOICE_FIELD_NOT_EMPTY = "Field not empty"
-    CHOICE_FIELD_VALUE = "Field has value"
-    CHOICE_FIELD_NOT_VALUE = "Field does not have value"
+    CHOICE_SHORTEST = "Choose the path with the shortest length"
+    CHOICE_FIELD_NOT_EMPTY = "Choose path where a field is not empty"
+    CHOICE_FIELD_VALUE = "Choose field that has a value"
+    CHOICE_FIELD_NOT_VALUE = "Choose field that does NOT have value"
 
     def __init__(self, shpLayer, choice=None, fieldname=None, fieldval=None, msgcallback=None):
         """

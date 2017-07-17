@@ -103,7 +103,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     
     Direct Actions caused by events like clicks    
     
-    Actions trigger a downward cascade of effectss
+    Actions trigger a downward cascade of effects
     
     """
 
@@ -117,6 +117,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # TODO: distinguish between from and to calls and do the right thing. If neither, try to do both
 
         debugPrint( "loadPopulate")
+        self.handleMapLayerChange(True)
         self.setAppVectorLayerFromMap()
         self.recalcVectorLayerFields()
         self.resetAppSelectedObjects()
@@ -125,10 +126,15 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
     def cmbLayerChange(self):
         if self.isVisible():
+
             debugPrint( "cmbLayerChange")
+
             self.recalcVectorLayerFields()
             self.getMapVectorLayerFields()
             self.createProfile()
+            self.appFromID = None
+            self.appToID = None
+            self.updateReachLabels()
 
     def grabFrom(self):
         self.appFromID = self.mapSelectedObjects[0][0].id()
@@ -168,12 +174,12 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.getSelectedMapObjects()
             self.stateUpdate()
 
-    def handleMapLayerChange(self):
+    def handleMapLayerChange(self, force=False):
         """
         Triggered when new layers are added or removed from the map
         :return:
         """
-        if self.isVisible():
+        if self.isVisible() or force:
             debugPrint( "handleMapLayerChange")
             # Get the data from the maps
             self.getMapVectorLayers()
@@ -371,8 +377,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         try:
             self.theProfile = Profile(selectedLayer, msgcallback=self.setFromToMsg)
         except Exception as e:
-            if self.theProfile is not None and self.theProfile.logmsgs is not None:
-                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+            if self.theProfile is not None and self.theProfile.metalogs is not None:
+                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.metalogs), str(e))
                 okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
             else:
                 detailstxt = "Exception:\n=====================\n{0}".format(str(e))
@@ -394,8 +400,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         try:
             self.appFromID, self.appToID = self.theProfile.pathfinder(self.appFromID, self.appToID)
         except Exception as e:
-            if self.theProfile is not None and self.theProfile.logmsgs is not None:
-                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+            if self.theProfile is not None and self.theProfile.metalogs is not None:
+                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.metalogs), str(e))
                 okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
             else:
                 detailstxt = "Exception:\n=====================\n{0}".format(str(e))
