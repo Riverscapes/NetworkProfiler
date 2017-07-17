@@ -212,15 +212,23 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         currentSelection = self.cmbPathChoose.currentText()
 
-        self.txtPathChooseValue.setEnabled(False)
-        # self.lblPathChooseValue.enabled(False)
-        self.cmbPathChooseField.setEnabled(False)
-        # self.lblPathChooseField.enabled(True)
-        if currentSelection != Profile.CHOICE_SHORTEST:
-            self.cmbPathChooseField.setEnabled(True)
-            # self.lblPathChooseField.enabled(True)
-        if currentSelection == Profile.CHOICE_FIELD_NOT_VALUE or currentSelection == Profile.CHOICE_FIELD_VALUE:
-            self.txtPathChooseValue.setEnabled(True)
+        txtPathChooseValue = currentSelection == Profile.CHOICE_FIELD_NOT_VALUE or currentSelection == Profile.CHOICE_FIELD_VALUE
+        cmbPathChooseField = currentSelection != Profile.CHOICE_SHORTEST
+
+        # Only change things if we need to
+        if self.txtPathChooseValue.isHidden() == txtPathChooseValue:
+            self.txtPathChooseValue.setEnabled(txtPathChooseValue)
+            self.lblPathChooseValue.setEnabled(txtPathChooseValue)
+
+            self.txtPathChooseValue.setHidden(not txtPathChooseValue)
+            self.lblPathChooseValue.setHidden(not txtPathChooseValue)
+
+        if self.cmbPathChooseField.isHidden() == cmbPathChooseField:
+            self.cmbPathChooseField.setEnabled(cmbPathChooseField)
+            self.lblPathChooseField.setEnabled(cmbPathChooseField)
+
+            self.cmbPathChooseField.setHidden(not cmbPathChooseField)
+            self.lblPathChooseField.setHidden(not cmbPathChooseField)
 
 
     def recalcVectorLayerFields(self):
@@ -303,7 +311,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
 
     def recalcFieldOptions(self):
-        print "hello"
+        print "IMPLEMENT ME"
 
 
     def recalcGrabButtons(self):
@@ -317,8 +325,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         if len(self.mapSelectedObjects) > 1:
             self.setFromToMsg(
-                "You have {} features selected. To use the grab tool you must select only one.".format(
-                    len(self.mapSelectedObjects)))
+                "You have {} features selected. To use the grab tool you must select only one.".format(len(self.mapSelectedObjects)))
+
         elif len(self.mapSelectedObjects) == 0:
             self.setFromToMsg("You have 0 features selected. To use the grab tool you must select at least one.".format(
                 len(self.mapSelectedObjects)))
