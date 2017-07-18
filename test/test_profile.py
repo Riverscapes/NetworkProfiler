@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 
 from NetworkProfiler.profiler import Profile
 from utilities import get_qgis_app
@@ -8,7 +8,7 @@ QGIS_APP = get_qgis_app()
 from qgis.core import QgsVectorLayer
 from os import path
 
-class TestProfiler(TestCase):
+class TestProfiler(unittest.TestCase):
 
     def setUp(self):
         """Runs before each test."""
@@ -122,11 +122,11 @@ class TestProfiler(TestCase):
 
         # Test a single path. Thisse is the simplest case
 
-        self.assertFalse(self.nxProfile.reversable)
+        self.assertFalse(self.nxProfile.reversible)
         self.nxProfile.pathfinder(8, 10)
-        self.assertFalse(self.nxProfile.reversable)
+        self.assertFalse(self.nxProfile.reversible)
         self.nxProfile.pathfinder(10, 8)
-        self.assertTrue(self.nxProfile.reversable)
+        self.assertTrue(self.nxProfile.reversible)
 
     def test_segLength(self):
         self.assertEqual(self.nxProfile._segLength(30), 0.48666221658771897)
@@ -144,3 +144,7 @@ class TestProfiler(TestCase):
 
         shortest = self.nxProfile._choosebylength()
         self.assertListEqual(self.nxProfile.getPathEdgeIds(shortest), [29, 30, 33, 34])
+
+
+if __name__ == '__main__':
+    unittest.main()

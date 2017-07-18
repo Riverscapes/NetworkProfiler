@@ -1,4 +1,4 @@
-import csv
+
 import networkx as nx
 import ogr
 import copy
@@ -31,7 +31,7 @@ class Profile():
 
         self.logger = logging.getLogger('Profile')
         self.msgcallback = msgcallback
-        self.reversable = False
+        self.reversible = False
         self.idField = "_FID_"
         self.metalogs = []
         self.pathmsgs = []
@@ -42,6 +42,11 @@ class Profile():
         self.toEdges = []
 
         self.features = {}
+        self.cols = []
+        self.calccols = []
+        self.csvkeys = []
+
+        self.results = []
 
         # Convert QgsLayer to NX graph
         self._qgsLayertoNX(shpLayer, simplify=True)
@@ -78,31 +83,28 @@ class Profile():
 
         return ids
 
-    def _calcfields(self, edges):
+    def calcfields(self, edges):
         """
         These are fields that need to be calculated.
         :param edges:
         :return:
         """
-        path = []
+        calcdict = {}
 
         cummulativelength = 0
-        for idx, edge in enumerate(edges):
-            # Get the ID for this edge
-            attrFields ={}
-            attrCalc = {}
-            attrFields = { k: v for k, v in self.G.get_edge_data(*edge).iteritems() if k.lower() not in ['json', 'wkb', 'wkt'] }
 
+        for idx, edge in enumerate(edges):
+            fid = edge.fids[0]
             attrCalc = {}
-            attrCalc['ProfileCalculatedLength'] = attrFields['_calc_length_']
+            attrCalc['ProfileCalculatedLength'] = self._segLength(fid)
             cummulativelength += attrCalc['ProfileCalculatedLength']
             attrCalc['ProfileCummulativeLength'] = cummulativelength
             attrCalc['ProfileID'] = idx + 1
-            # Calculate length and cumulative length
-            # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'KIndex', 'Attr', 'CalcAttr'], verbose=True)
-            # path.append(EdgeObj(edge, attrFields, attrCalc))
 
-        return path
+            calcdict[fid] = attrCalc
+
+        self.calccols = calcdict[calcdict.keys()[0]].keys()
+        return calcdict
 
     def pathfinder(self, inID, outID=None):
         """
@@ -115,7 +117,7 @@ class Profile():
         self.paths = []
         self.toEdges = []
         self.fromEdge = None
-        self.reversable = False
+        self.reversible = False
         self.fromEdge = self.findEdgewithID(inID)
 
         if not self.fromEdge:
@@ -141,9 +143,12 @@ class Profile():
         # No paths. try a reversal
         if len(self.paths) == 0:
             newProfile = copy.copy(self)
-            newProfile.pathfinder(outID, inID)
-            if len(newProfile.paths) > 0:
-                self.reversable = True
+            try:
+                newProfile.pathfinder(outID, inID)
+                if len(newProfile.paths) > 0:
+                    self.reversible = True
+            except Exception, e:
+                pass
 
     def _prepareEdges(self, rawedges):
         """
@@ -221,6 +226,7 @@ class Profile():
                     e1, e2, attr = edge
                     self.features[fid] = attr
                     self.G.add_edge(e1, e2, key=attr[self.idField])
+                self.cols = self.features[self.features.keys()[0]].keys()
             else:
                 raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
                                   format(QgsWKBTypes.displayString(int(geo.wkbType()))))
@@ -328,89 +334,56 @@ class Profile():
         self.logger.error(msg)
 
 
-    def writeCSV(self, filename, cols=None):
+    def generateCSV(self, filename, cols=None):
         """
         Separate out the writer so we can test without writing files
         :param outdict:
         :param csv:
         :return:
         """
-        chosenpath = self.pathchoice.choosebylength(self.features, self.paths)
-        # Now we have to chose just one path out of the ones we have
 
-        results = []
+        chosenpath = self._choosebylength()
+        # Now we have to chose just one path out of the ones we have
+        calcfields = self.calcfields(chosenpath)
+
+        self.results = []
         self.logInfo("Writing CSV file")
-        if len(self.attr) == 0:
-            self.logError("WARNING: No rows to write to CSV. Nothing done")
-            return
 
         # Make a subset dictionary
         includedShpCols = []
         if len(cols) > 0:
             for col in cols:
-                if col not in self.attr[0]['shpfields']:
+                if col not in self.cols:
                     self.logError("WARNING: Could not find column '{}' in shapefile".format(col))
                 else:
                     includedShpCols.append(col)
         else:
-            includedShpCols = self.attr[0]['shpfields'].keys()
+            includedShpCols = self.cols
 
         # Now just pull out the columns we need
-        for node in self.attr:
+        for node in chosenpath:
+            fid = node.fids[0]
             csvDict = {}
 
             # The ID field is not optional
-            # TODO: Hardcoding "FID" might not be the best idea here
-            csvDict[self.idField] = node['shpfields'][self.idField]
+            csvDict[self.idField] = fid
 
-            # Debug gets the Wkt
-            # if self.debug:
-            csvDict["Wkt"] = node['shpfields']['Wkt']
+            csvDict["Wkt"] = self.features[fid]['Wkt']
 
             # Only some of the fields get included
-            for key, val in node['shpfields'].iteritems():
+            for key in self.cols:
                 if key in includedShpCols:
-                    csvDict[key] = val
+                    csvDict[key] = self.features[fid][key]
+
             # Everything calculated gets included
-            for key, val in node['calculated'].iteritems():
+            for key, val in calcfields[fid].iteritems():
                 csvDict[key] = val
 
-            results.append(csvDict)
+            self.results.append(csvDict)
 
+        self.csvkeys = self.results[0].keys()
+        self.csvkeys.sort(self._keycolSort)
 
-        with open(filename, 'wb') as filename:
-            keys = results[0].keys()
-
-            # pyt the keys in order
-            def colSort(a, b):
-                # idfield should bubble up
-                item = self.attr[0]
-                if a == self.idField:
-                    return -1
-                elif b == self.idField:
-                    return 1
-                # put shpfields ahead of calc fields
-                elif (a in item['shpfields'] and b in item['calculated']):
-                    return -1
-                elif (a in item['calculated'] and b in item['shpfields']):
-                    return 1
-                # Sort everything else alphabetically
-                elif (a in item['shpfields'] and b in item['shpfields']) or (a in item['calculated'] and b in item['calculated']):
-                    if a.lower() > b.lower():
-                        return 1
-                    elif a.lower() < b.lower():
-                        return -1
-                    else:
-                        return 0
-                else:
-                    return -1
-
-            keys.sort(colSort)
-
-            writer = csv.DictWriter(filename, keys)
-            writer.writeheader()
-            writer.writerows(results)
-        self.logInfo("Done Writing CSV")
 
     def _chooseEdges(self, choicearr):
         """
@@ -435,6 +408,29 @@ class Profile():
             return choicearr
         else:
             return chosenarr
+
+    # pyt the keys in order
+    def _keycolSort(self, a, b):
+        # idfield should bubble up
+        if a == self.idField:
+            return -1
+        elif b == self.idField:
+            return 1
+        # put shpfields ahead of calc fields
+        elif (a in self.cols and b in self.calccols):
+            return -1
+        elif (a in self.calccols and b in self.cols):
+            return 1
+        # Sort everything else alphabetically
+        elif (a in self.cols and b in self.cols) or (a in self.calccols and b in self.calccols):
+            if a.lower() > b.lower():
+                return 1
+            elif a.lower() < b.lower():
+                return -1
+            else:
+                return 0
+        else:
+            return -1
 
     def _choosebylength(self):
         """

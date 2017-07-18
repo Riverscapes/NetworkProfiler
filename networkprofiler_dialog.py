@@ -23,6 +23,7 @@
 import os
 from PyQt4 import QtGui, uic
 import traceback
+import csv
 
 import qgis.utils
 from PyQt4.QtCore import QVariant, Qt, QUrl
@@ -143,26 +144,26 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.createProfile()
             self.appFromID = None
             self.appToID = None
-            self.updateReachLabels()
+            self.stateUpdate()
 
     def resetFromTo(self):
         debugPrint("resetFromTo")
         self.appFromID = None
         self.appToID = None
         self.theProfile = None
-        self.updateReachLabels()
+        self.stateUpdate()
 
     def grabFrom(self):
         debugPrint("grabFrom")
         self.appFromID = self.mapSelectedObjects[0][0].id()
         self.runProfile()
-        self.updateReachLabels()
+        self.stateUpdate()
 
     def grabTo(self):
         debugPrint("grabTo")
         self.appToID = self.mapSelectedObjects[0][0].id()
         self.runProfile()
-        self.updateReachLabels()
+        self.stateUpdate()
 
     def flipFromTo(self):
         debugPrint("flipFromTo")
@@ -174,7 +175,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         self.runProfile()
 
-        self.updateReachLabels()
+        self.stateUpdate()
 
     def actionOpenHelp(self):
         QtGui.QDesktopServices.openUrl(QUrl(HELP_URL))
@@ -209,8 +210,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             # Now repopulate the dropdowns
             self.recalcVectorLayers()
 
-    def updateReachLabels(self):
-        debugPrint("updateReachLabels")
+    def recalcReachLabels(self):
+        debugPrint("recalcReachLabels")
         self.lblFrom.setText("ID: {}".format(self.appFromID))
         self.lblTo.setText("ID: {}".format(self.appToID))
 
@@ -320,6 +321,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             enabled = False
         if self.appFromID is None or self.appToID is None:
             enabled = False
+        if self.appToID is None or self.appToID is None:
+            enabled = False
         if len(self.treeFields.selectedIndexes()) == 0:
             enabled = False
 
@@ -337,7 +340,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.appToID = self.mapSelectedObjects[1][0].id()
 
         self.runProfile()
-        self.updateReachLabels()
+        self.stateUpdate()
 
 
     def recalcFieldOptions(self):
@@ -376,6 +379,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         debugPrint( "stateUpdate")
         self.recalcGrabButtons()
         self.recalcFieldOptions()
+        self.recalcReachLabels()
         self.recalcGoButton()
 
 
@@ -436,13 +440,15 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     self.appToID = newToID
                     noOutflowStr = "'To' point was discovered and "
 
-                self.updateReachLabels()
                 if len(self.theProfile.paths) > 0:
                     msg = "{}at least one path was found between 'from' and 'to' points.".format(noOutflowStr)
                     self.setFromToMsg(msg[0].upper() + msg[1:])
                 else:
-                    self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
-
+                    if self.theProfile.reversible:
+                        self.setFromToMsg("'From' and 'to' points appear to be backwards. Click 'reverse' to correct.", 'red')
+                    else:
+                        self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
+                self.stateUpdate()
         except Exception as e:
             traceback.print_exc()
             self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
@@ -461,7 +467,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Now write to CSV
         try:
-            outputdir = QtGui.QFileDialog.getSaveFileName(self, "Output File", "ProfileOutput.csv", "CSV File (*.csv);;All files (*)")
+            outputdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", os.path.expanduser("~"), QtGui.QFileDialog.ShowDirsOnly)
 
             #TODO: if dir exists prompt for overwrite
             #TODO: if dir doesn't exist, create it.
@@ -469,14 +475,25 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             # TODO: Output log file
             # - Details about when this was run. Inputs and outputs
             # - Details about the traversal.
+
             csvpath = os.path.join(outputdir, "profile.csv")
             logpath = os.path.join(outputdir, "profile.log")
             plotspath = os.path.join(outputdir, "plots")
 
-            self.theProfile.writeCSV(self.txtCSVOutput.text(), cols)
-            okDlg("Completed:", infoText="CSV file written: {}".format(self.txtCSVOutput.text()))
+            self.theProfile.generateCSV(csvpath, cols)
 
-            plots = Plots(csvpath, plotspath)
+            with open(csvpath, 'wb') as f:
+
+                writer = csv.DictWriter(f, self.theProfile.csvkeys)
+                writer.writeheader()
+                writer.writerows(self.theProfile.results)
+
+            debugPrint("Done Writing CSV")
+
+            if not os.path.isdir(plotspath):
+                os.makedirs(plotspath)
+
+            plots = Plots(self.theProfile, plotspath)
             plots.createPlots()
 
             # Write a file with some information about what just happened
@@ -484,13 +501,15 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 f.write("Inputs:\n==========================================\n\n")
 
                 f.write("Profile:\n==========================================\n\n")
-                f.writelines(self.theProfile.logmsgs)
+                f.writelines(self.theProfile.metalogs)
                 f.write("Path:\n==========================================\n\n")
-                f.writelines(self.theProfile.logmsgs)
+                f.writelines(self.theProfile.pathmsgs)
+
+            okDlg("Completed:", infoText="CSV file written: {}".format(csvpath))
 
         except Exception as e:
             traceback.print_exc()
-            detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
+            detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.metalogs), str(e))
             okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
 
 

@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 from NetworkProfiler.profiler import Profile
 from utilities import get_qgis_app
 
@@ -7,7 +7,7 @@ QGIS_APP = get_qgis_app()
 from qgis.core import QgsVectorLayer
 from os import path
 
-class TestPathChoice(TestCase):
+class TestPathChoice(unittest.TestCase):
 
     def setUp(self):
         """
@@ -93,3 +93,8 @@ class TestPathChoice(TestCase):
         self.profile.fieldval = "C"
         chosenpathC = self.profile._chooseEdges(self.testchoices[0])
         self.assertEqual(self.profile.getPathEdgeIds(chosenpathC), [30,32])
+
+
+
+if __name__ == '__main__':
+    unittest.main()
