@@ -76,7 +76,6 @@ class TestProfiler(TestCase):
         # Test a single path. This is the simplest case
         self.nxProfile.pathfinder(8, 10)
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
-        self.assert
 
         # Double Path
         self.nxProfile.pathfinder(22, 28)
@@ -121,12 +120,13 @@ class TestProfiler(TestCase):
         :return:
         """
 
-        # Test a single path. This is the simplest case
-        fromID,toID = self.nxProfile.pathfinder(10, 8)
+        # Test a single path. Thisse is the simplest case
 
-        self.assertEqual(fromID, 8)
-        self.assertEqual(toID, 10)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[8,9,10]])
+        self.assertFalse(self.nxProfile.reversable)
+        self.nxProfile.pathfinder(8, 10)
+        self.assertFalse(self.nxProfile.reversable)
+        self.nxProfile.pathfinder(10, 8)
+        self.assertTrue(self.nxProfile.reversable)
 
     def test_segLength(self):
         self.assertEqual(self.nxProfile._segLength(30), 0.48666221658771897)

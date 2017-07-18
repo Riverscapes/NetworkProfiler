@@ -22,6 +22,7 @@
 """
 import os
 from PyQt4 import QtGui, uic
+import traceback
 
 import qgis.utils
 from PyQt4.QtCore import QVariant, Qt, QUrl
@@ -32,6 +33,7 @@ from NetworkProfiler.debug import Debugger
 from NetworkProfiler.profiler import Profile
 from NetworkProfiler.plot import Plots
 from NetworkProfiler.popupdialog import okDlg
+
 
 HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
 FORM_CLASS, _ = uic.loadUiType(os.path.join(os.path.dirname(__file__), 'networkprofiler_dialog_base.ui'))
@@ -97,7 +99,11 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.cmbPathChooseField.currentIndexChanged.connect(self.stateUpdate)
         self.txtPathChooseValue.textChanged.connect(self.stateUpdate)
 
+    def showEvent(self, event):
+        debugPrint("showEvent")
+        super(NetworkProfilerDialog, self).showEvent(event)
         self.loadPopulate()
+
 
     """
     
@@ -117,7 +123,10 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         # TODO: distinguish between from and to calls and do the right thing. If neither, try to do both
 
         debugPrint( "loadPopulate")
+        self.appFromID = None
+        self.appToID = None
         self.handleMapLayerChange(True)
+        self.handleMapSelectionChange()
         self.setAppVectorLayerFromMap()
         self.recalcVectorLayerFields()
         self.resetAppSelectedObjects()
@@ -136,22 +145,34 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.appToID = None
             self.updateReachLabels()
 
+    def resetFromTo(self):
+        debugPrint("resetFromTo")
+        self.appFromID = None
+        self.appToID = None
+        self.theProfile = None
+        self.updateReachLabels()
+
     def grabFrom(self):
+        debugPrint("grabFrom")
         self.appFromID = self.mapSelectedObjects[0][0].id()
         self.runProfile()
         self.updateReachLabels()
 
     def grabTo(self):
+        debugPrint("grabTo")
         self.appToID = self.mapSelectedObjects[0][0].id()
         self.runProfile()
         self.updateReachLabels()
 
     def flipFromTo(self):
+        debugPrint("flipFromTo")
         fromID = self.appFromID
         toID = self.appToID
 
         self.appFromID = toID
         self.appToID = fromID
+
+        self.runProfile()
 
         self.updateReachLabels()
 
@@ -189,6 +210,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.recalcVectorLayers()
 
     def updateReachLabels(self):
+        debugPrint("updateReachLabels")
         self.lblFrom.setText("ID: {}".format(self.appFromID))
         self.lblTo.setText("ID: {}".format(self.appToID))
 
@@ -216,6 +238,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         The braid choices are a little logic-y so we need to enable/disable some of the controls
         :return:
         """
+        debugPrint("recalcBraidRuleState")
         currentSelection = self.cmbPathChoose.currentText()
 
         txtPathChooseValue = currentSelection == Profile.CHOICE_FIELD_NOT_VALUE or currentSelection == Profile.CHOICE_FIELD_VALUE
@@ -291,6 +314,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         The ok button shouldn't allow bad behaviour
         :return:
         """
+        debugPrint("recalcGoButton")
         enabled = True
         if self.cmbLayer.count() == 0 or self.cmbLayer.currentIndex() < 0:
             enabled = False
@@ -305,7 +329,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         """
         Set the reach ID field in the UI
         """
-
+        debugPrint("resetAppSelectedObjects")
         if self.appFromID is None and len(self.mapSelectedObjects) > 0:
             self.appFromID = self.mapSelectedObjects[0][0].id()
 
@@ -317,7 +341,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
 
     def recalcFieldOptions(self):
-        print "IMPLEMENT ME"
+        debugPrint("recalcFieldOptions")
 
 
     def recalcGrabButtons(self):
@@ -325,7 +349,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         Set the Grab button to be disabled for all but one case
         :return:
         """
-
+        debugPrint("recalcGrabButtons")
         self.btnGrabFrom.setEnabled(False)
         self.btnGrabTo.setEnabled(False)
 
@@ -369,7 +393,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :param event:
         :return:
         """
-        debugPrint("Run Event")
+        debugPrint("Create profile")
         selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
 
         self.theProfile = None
@@ -384,6 +408,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 detailstxt = "Exception:\n=====================\n{0}".format(str(e))
                 okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
                 return
+            self.resetFromTo()
+
 
     def runProfile(self):
         """
@@ -394,19 +420,30 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         :param event:
         :return:
         """
-        if self.theProfile is None:
-            self.createProfile()
 
         try:
-            self.appFromID, self.appToID = self.theProfile.pathfinder(self.appFromID, self.appToID)
+            if self.appFromID is not None:
+                debugPrint("runProfile")
+                if self.theProfile is None:
+                    self.createProfile()
+
+                self.theProfile.pathfinder(self.appFromID, self.appToID)
+                newToID = self.theProfile.getToID()
+
+                noOutflowStr = ""
+                if self.appToID is None and newToID is not None:
+                    self.appToID = newToID
+                    noOutflowStr = "'To' point was discovered and "
+
+                self.updateReachLabels()
+                if len(self.theProfile.paths) > 0:
+                    msg = "{}at least one path was found between 'from' and 'to' points.".format(noOutflowStr)
+                    self.setFromToMsg(msg[0].upper() + msg[1:])
+                else:
+                    self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
+
         except Exception as e:
-            if self.theProfile is not None and self.theProfile.metalogs is not None:
-                detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.metalogs), str(e))
-                okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
-            else:
-                detailstxt = "Exception:\n=====================\n{0}".format(str(e))
-                okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
-                return
+            self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
 
     def saveProfile(self):
         """
@@ -491,6 +528,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         Get a helpful list of selected objects on the map
         :return:
         """
+        debugPrint("getSelectedMapObjects")
         self.mapSelectedObjects = []
         for layer in self.mapVectorLayers:
             # Only add items that are on the currrent layer
@@ -499,6 +537,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     self.mapSelectedObjects.append((feat, layer['layer']))
 
     def getMapVectorLayers(self):
+        debugPrint("getMapVectorLayers")
         self.mapVectorLayers = [{'layer':layer} for layer in self.mapCanvas.layers() if type(layer) is QgsVectorLayer]
 
 

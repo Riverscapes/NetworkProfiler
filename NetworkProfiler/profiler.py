@@ -1,16 +1,18 @@
 import csv
 import networkx as nx
 import ogr
+import copy
 from qgis.core import *
 import logging
 from collections import namedtuple
 from shapely import wkb
 
+
 """
 We invented a special kind of tuple to handle all the different properties of an "Edge"
 """
 
-EdgeObj = namedtuple('EdgeObj', ['edge', 'fid'])
+EdgeObj = namedtuple('EdgeObj', ['edge', 'fids'])
 
 
 class Profile():
@@ -29,12 +31,15 @@ class Profile():
 
         self.logger = logging.getLogger('Profile')
         self.msgcallback = msgcallback
-
+        self.reversable = False
         self.idField = "_FID_"
         self.metalogs = []
         self.pathmsgs = []
 
         self.paths = []
+
+        self.fromEdge = None
+        self.toEdges = []
 
         self.features = {}
 
@@ -51,6 +56,12 @@ class Profile():
 
         if fieldval is None and choice == Profile.CHOICE_FIELD_VALUE:
             raise Exception("ERROR: If you your path choice involves a field value you must provide one")
+
+    def getFromID(self):
+        return self.fromEdge.fids[0] if self.fromEdge is not None else None
+
+    def getToID(self):
+        return self.toEdges[0].fids[0] if len(self.toEdges) > 0 else None
 
     def getPathEdgeIds(self, path=None):
         """
@@ -93,8 +104,7 @@ class Profile():
 
         return path
 
-
-    def pathfinder(self, inID, outID=None, reversed=False):
+    def pathfinder(self, inID, outID=None):
         """
         Find the shortest path between two nodes or just one node and the outflow
         :param G:
@@ -103,43 +113,35 @@ class Profile():
         :return:
         """
         self.paths = []
+        self.reversable = False
+        self.fromEdge = self.findEdgewithID(inID)
 
-        startEdge = self.findEdgewithID(inID)
-
-        if not startEdge:
+        if not self.fromEdge:
             raise Exception("Could not find start ID: {} in network.".format(inID))
 
         if outID:
-            endEdge = self.findEdgewithID(outID)
-            if not endEdge:
+            outIDs = [outID]
+            toEdge = self.findEdgewithID(outID)
+            if not toEdge:
                 raise Exception("Could not find end ID: {} in network.".format(outID))
-
-            # Make a depth-first tree from the first headwater we find
-            try:
-                self._findSimplePaths(startEdge, endEdge)
-            except Exception, e:
-                raise Exception("Path not found between these two points with id: '{}' and '{}'".format(inID, outID))
+            self.toEdges = [toEdge]
         else:
             # This is a "FIND THE OUTFLOW" case where a B point isn't specified
-            try:
-                outflowEdges = self._getTerminalEdges(startEdge.edge[1])
+            self.toEdges = self._getTerminalEdges(self.fromEdge.edge[1])
 
-                # Now just get a list of all the outflow points
-                for outEdge in outflowEdges:
-                    self._findSimplePaths(startEdge, outEdge)
+        # Now just get a list of all possible paths for all possible outflows
+        for outEdge in self.toEdges:
+            # Make a depth-first tree from the first headwater we find
+            self._findSimplePaths(self.fromEdge, outEdge)
 
-            except Exception, e:
-                raise Exception("Path not found between input point with ID: {} and outflow point".format(inID))
+        # TODO: JUST RETURN THE FIRST OUTFLOW POINT IS WRONG. NEED TO ACCOMODATE MULTIPLES
 
         # No paths. try a reversal
-        if len(self.paths) == 0 and not reversed:
-            newIn, newOut = self.pathfinder(outID, inID)
-            if len(self.paths) > 0:
-                return (newIn, newOut)
-
-        # We're not always guaranteed to have both input and output points.
-        # Returning them helps us.
-        return (inID, outID)
+        if len(self.paths) == 0:
+            newProfile = copy.copy(self)
+            newProfile.pathfinder(outID, inID)
+            if len(newProfile.paths) > 0:
+                self.reversable = True
 
     def _prepareEdges(self, rawedges):
         """
@@ -179,7 +181,7 @@ class Profile():
 
         # There may be multiple paths so we need to find indices
         for edges in pathedges:
-            self._recursivePathsFinder(edges, [EdgeObj(startEdge.edge, startEdge.fid)])
+            self._recursivePathsFinder(edges, [EdgeObj(startEdge.edge, startEdge.fids)])
 
 
     def _qgsLayertoNX(self, shapelayer, simplify=True, geom_attrs=True):
@@ -222,15 +224,15 @@ class Profile():
                                   format(QgsWKBTypes.displayString(int(geo.wkbType()))))
 
 
-    def _recursivePathsFinder(self, edges, path=[]):
+    def _recursivePathsFinder(self, edges, path=None):
         """
         Help us find all the different paths with a given combination of nodes
         :return:
         """
-        newpath = path[:]
+        newpath = path[:] if path is not None else []
 
         def getNext(eobjs, lastedge):
-            return [EdgeObj(eobj[0], fid) for eobj in eobjs for fid in eobj.fid if eobj.edge[0] == lastedge.edge[1]]
+            return [EdgeObj(eobj[0], fid) for eobj in eobjs for fid in eobj.fids if eobj.edge[0] == lastedge.edge[1]]
 
         # A branch could be a real node branch or a duplicate edge
         nextEdges = getNext(edges, newpath[-1])
@@ -246,9 +248,8 @@ class Profile():
         else:
             chosenedges = self._chooseEdges(nextEdges)
             # Here is the end or a fork
-            for edge in nextEdges:
+            for edge in chosenedges:
                 self._recursivePathsFinder(edges, newpath + [edge])
-
 
     def edges_from_line(self, geom, attrs, simplify=True, geom_attrs=True):
         """
@@ -419,13 +420,13 @@ class Profile():
         chosenarr = []
 
         if self.choice == Profile.CHOICE_FIELD_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fid] and self.features[ed.fid][self.fieldname] == self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] == self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fid] and self.features[ed.fid][self.fieldname] != self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] != self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_EMPTY:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fid] and self.features[ed.fid][self.fieldname] != None and self.features[ed.fid][self.fieldname] != "", choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] != None and self.features[ed.fids][self.fieldname] != "", choicearr)
 
         # If we couldn't make a decision just return everything
         if len(chosenarr) == 0:
@@ -450,4 +451,4 @@ class Profile():
         return wkb.loads(self.features[fid]['Wkb']).length
 
     def _pathLength(self, pathArr):
-        return sum([self._segLength(x.fid) for x in pathArr])
+        return sum([self._segLength(x.fids) for x in pathArr])
