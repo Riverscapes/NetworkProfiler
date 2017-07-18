@@ -424,6 +424,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         try:
             if self.appFromID is not None:
                 debugPrint("runProfile")
+
                 if self.theProfile is None:
                     self.createProfile()
 
@@ -443,6 +444,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                     self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
 
         except Exception as e:
+            traceback.print_exc()
             self.setFromToMsg("No path found between 'From' and 'To' point.", 'red')
 
     def saveProfile(self):
@@ -487,6 +489,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 f.writelines(self.theProfile.logmsgs)
 
         except Exception as e:
+            traceback.print_exc()
             detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.logmsgs), str(e))
             okDlg("ERROR:", infoText=str(e), detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
 

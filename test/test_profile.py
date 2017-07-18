@@ -47,9 +47,9 @@ class TestProfiler(TestCase):
     def test_getPathEdgeIds(self):
         from NetworkProfiler.profiler import EdgeObj
         self.nxProfile.paths = [[
-            EdgeObj(((0,1), (2,3)), 1),
-            EdgeObj(((2,3), (4,5)), 2),
-            EdgeObj(((4,5), (6,7)), 3),
+            EdgeObj(((0,1), (2,3)), [1]),
+            EdgeObj(((2,3), (4,5)), [2]),
+            EdgeObj(((4,5), (6,7)), [3]),
         ]]
         self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[1,2,3]])
 

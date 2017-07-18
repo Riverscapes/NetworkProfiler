@@ -72,9 +72,9 @@ class Profile():
 
         if path is None:
             for p in self.paths:
-                ids.append([idx[1] for idx in p])
+                ids.append([idx.fids[0] for idx in p])
         else:
-            ids = [idx[1] for idx in path]
+            ids = [idx.fids[0] for idx in path]
 
         return ids
 
@@ -100,7 +100,7 @@ class Profile():
             attrCalc['ProfileID'] = idx + 1
             # Calculate length and cumulative length
             # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'KIndex', 'Attr', 'CalcAttr'], verbose=True)
-            path.append(EdgeObj(edge, attrFields, attrCalc))
+            # path.append(EdgeObj(edge, attrFields, attrCalc))
 
         return path
 
@@ -113,6 +113,8 @@ class Profile():
         :return:
         """
         self.paths = []
+        self.toEdges = []
+        self.fromEdge = None
         self.reversable = False
         self.fromEdge = self.findEdgewithID(inID)
 
@@ -232,7 +234,7 @@ class Profile():
         newpath = path[:] if path is not None else []
 
         def getNext(eobjs, lastedge):
-            return [EdgeObj(eobj[0], fid) for eobj in eobjs for fid in eobj.fids if eobj.edge[0] == lastedge.edge[1]]
+            return [EdgeObj(eobj[0], [fid]) for eobj in eobjs for fid in eobj.fids if eobj.edge[0] == lastedge.edge[1]]
 
         # A branch could be a real node branch or a duplicate edge
         nextEdges = getNext(edges, newpath[-1])
@@ -302,11 +304,11 @@ class Profile():
         # [self.G.get_edge_data(*np) for np in self.G.edges_iter()]
         foundEdge = None
         for np in self.G.edges_iter():
-            for k in self.G.get_edge_data(*np).iterkeys():
-                if k == id:
-                    # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'fid'], verbose=True)
-                    foundEdge = EdgeObj(np, k)
-                    break
+            keys = self.G.get_edge_data(*np).keys()
+            if id in keys:
+                # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'fid'], verbose=True)
+                foundEdge = EdgeObj(np, [id])
+                break
 
             if foundEdge is not None:
                 break
@@ -451,4 +453,4 @@ class Profile():
         return wkb.loads(self.features[fid]['Wkb']).length
 
     def _pathLength(self, pathArr):
-        return sum([self._segLength(x.fids) for x in pathArr])
+        return sum([self._segLength(x.fids[0]) for x in pathArr])
