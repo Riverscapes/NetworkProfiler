@@ -70,6 +70,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.appSelectedFields = []
         self.appFromID = None
         self.appToID = None
+        self.appFromObj = None
+        self.appToObj = None
 
         self.lblFrom.setText("")
         self.lblTo.setText("")
@@ -98,8 +100,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.btnGrabTo.clicked.connect(self.grabTo)
         self.btnFlipFromTo.clicked.connect(self.flipFromTo)
 
-        self.btnFindFrom.clicked.connect(self.grabFrom)
-        self.btnFindTo.clicked.connect(self.grabTo)
+        self.btnFindFrom.clicked.connect(self.findFrom)
+        self.btnFindTo.clicked.connect(self.findTo)
 
         self.btnGrabFrom.setIcon(QIcon(qAppIcons.TARGET))
         self.btnGrabTo.setIcon(QIcon(qAppIcons.TARGET))
@@ -157,8 +159,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             self.recalcVectorLayerFields()
             self.getMapVectorLayerFields()
             self.createProfile()
-            self.appFromID = None
-            self.appToID = None
+            self.resetFromTo()
             self.stateUpdate()
 
     def resetFromTo(self):
@@ -166,34 +167,74 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.setFromToMsg("")
         self.appFromID = None
         self.appToID = None
+        self.appFromObj = None
+        self.appToObj = None
         self.theProfile = None
         self.stateUpdate()
 
     def grabFrom(self):
+        """
+        Recall: mapSelectedObjects is a list of tuples: (QgsFeature, QgsVectorLayer)
+        :return:
+        """
         debugPrint("grabFrom")
-        self.appFromID = self.mapSelectedObjects[0][0].id()
-        self.runProfile()
-        self.stateUpdate()
+        # If the To point is on a different layer then reset
+        if self.appToObj is not None and self.mapSelectedObjects[0][1] != self.appToObj[1]:
+            self.resetFromTo()
+
+        if self.mapSelectedObjects[0][1] != self.cmbLayer.itemData(self.cmbLayer.currentIndex()):
+            self.setFromToMsg('You must choose features on the same layer as your selection above.', 'red')
+        else:
+            self.appFromID = self.mapSelectedObjects[0][0].id()
+            self.appFromObj = self.mapSelectedObjects[0]
+
+            self.runProfile()
+            self.stateUpdate()
 
     def grabTo(self):
         debugPrint("grabTo")
-        self.appToID = self.mapSelectedObjects[0][0].id()
-        self.runProfile()
-        self.stateUpdate()
+        # If the To point is on a different layer then throw an error
+        if self.appFromObj is not None and self.mapSelectedObjects[0][1] != self.appFromObj[1]:
+            self.setFromToMsg('Could not grab point. It was on a different layer than your "From" point', 'red')
+        else:
+            self.appToID = self.mapSelectedObjects[0][0].id()
+            self.appToObj = self.mapSelectedObjects[0]
+            self.runProfile()
+            self.stateUpdate()
+
+    def findFrom(self):
+        if self.appFromObj is not None:
+            self.appFromObj[1].removeSelection()
+            self.appFromObj[1].selectByIds([self.appFromObj[0].id()])
+
+    def findTo(self):
+        if self.appToObj is not None:
+            self.appToObj[1].removeSelection()
+            self.appToObj[1].selectByIds([self.appToObj[0].id()])
 
     def flipFromTo(self):
         debugPrint("flipFromTo")
         fromID = self.appFromID
+        fromObj = self.appFromObj
         toID = self.appToID
+        toObj = self.appToObj
 
         self.appFromID = toID
         self.appToID = fromID
+
+        self.appFromObj = toObj
+        self.appToObj = fromObj
 
         self.runProfile()
         self.stateUpdate()
 
     def actionOpenHelp(self):
         QtGui.QDesktopServices.openUrl(QUrl(HELP_URL))
+
+    def flashFeature(self, feature):
+        # TODO: Might be nice to flash the feature at them
+        # self.mapCanvas.setSelectionColor()
+        print "FLASH"
 
     """
     
@@ -385,6 +426,14 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             if self.appToID is None or self.mapSelectedObjects[0][0].id() != self.appToID:
                 self.btnGrabTo.setEnabled(True)
 
+        self.btnFindFrom.setEnabled(False)
+        self.btnFindTo.setEnabled(False)
+
+        if self.appFromID is not None:
+            self.btnFindFrom.setEnabled(True)
+
+        if self.appToID is not None:
+            self.btnFindTo.setEnabled(True)
 
     def stateUpdate(self):
         """
