@@ -214,6 +214,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
     def flipFromTo(self):
         debugPrint("flipFromTo")
+
         fromID = self.appFromID
         fromObj = self.appFromObj
         toID = self.appToID
