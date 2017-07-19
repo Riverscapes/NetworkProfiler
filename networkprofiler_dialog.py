@@ -477,7 +477,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 detailstxt = "Exception:\n=====================\n{0}".format(str(e))
                 okDlg("ERROR:", "A critical error occured.", detailsTxt=detailstxt, icon=QtGui.QMessageBox.Critical)
                 return
-            self.resetFromTo()
 
 
     def runProfile(self):
@@ -504,6 +503,10 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 if self.appToID is None and newToID is not None:
                     self.appToID = newToID
                     noOutflowStr = "'To' point was discovered and "
+
+                    self.appFromObj[1].removeSelection()
+                    self.appFromObj[1].selectByIds([self.appToID])
+                    self.appToObj = self.mapSelectedObjects[0]
 
                 if len(self.theProfile.paths) > 0:
                     msg = "{}at least one path was found between 'from' and 'to' points.".format(noOutflowStr)
