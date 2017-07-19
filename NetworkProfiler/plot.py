@@ -31,10 +31,10 @@ class Plots():
         # Remove the plot frame lines. They are unnecessary chartjunk.
 
         ax = plt.subplot(111)
-        ax.spines["top"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_visible(False)
+        # ax.spines["top"].set_visible(False)
+        # ax.spines["bottom"].set_visible(False)
+        # ax.spines["right"].set_visible(False)
+        # ax.spines["left"].set_visible(False)
 
         # Ensure that the axis ticks only show up on the bottom and left of the plot.
         # Ticks on the right and top of the plot are generally unnecessary chartjunk.

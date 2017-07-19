@@ -28,7 +28,7 @@ from datetime import datetime
 
 import qgis.utils
 from PyQt4.QtCore import QVariant, Qt, QUrl
-from PyQt4.QtGui import QDesktopServices
+from PyQt4.QtGui import QDesktopServices, QIcon
 from qgis.core import *
 from qgis.gui import *
 
@@ -61,6 +61,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Map State objects:
         self.mapCanvas = qgis.utils.iface.mapCanvas()
+
         self.mapVectorLayers = []
         self.mapSelectedObjects = []
 
@@ -72,6 +73,9 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         self.lblFrom.setText("")
         self.lblTo.setText("")
+
+        # Set icons
+
 
         # Braid choices are constant
         self.cmbPathChoose.clear()
@@ -94,8 +98,17 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.btnGrabTo.clicked.connect(self.grabTo)
         self.btnFlipFromTo.clicked.connect(self.flipFromTo)
 
+        self.btnFindFrom.clicked.connect(self.grabFrom)
+        self.btnFindTo.clicked.connect(self.grabTo)
+
+        self.btnGrabFrom.setIcon(QIcon(qAppIcons.TARGET))
+        self.btnGrabTo.setIcon(QIcon(qAppIcons.TARGET))
+        self.btnFindFrom.setIcon(QIcon(qAppIcons.EYE))
+        self.btnFindTo.setIcon(QIcon(qAppIcons.EYE))
+
         self.cmdButtons.button(QtGui.QDialogButtonBox.Cancel).clicked.connect(self.close)
         self.cmdButtons.button(QtGui.QDialogButtonBox.Help).clicked.connect(self.actionOpenHelp)
+        self.cmdButtons.button(QtGui.QDialogButtonBox.Reset).clicked.connect(self.resetFromTo)
 
         # When to recalc app state. Choose these carefully. They run a lot.
         self.cmbLayer.currentIndexChanged.connect(self.stateUpdate)
@@ -141,7 +154,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         if self.isVisible():
 
             debugPrint( "cmbLayerChange")
-
             self.recalcVectorLayerFields()
             self.getMapVectorLayerFields()
             self.createProfile()
@@ -151,6 +163,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
     def resetFromTo(self):
         debugPrint("resetFromTo")
+        self.setFromToMsg("")
         self.appFromID = None
         self.appToID = None
         self.theProfile = None
@@ -177,7 +190,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.appToID = fromID
 
         self.runProfile()
-
         self.stateUpdate()
 
     def actionOpenHelp(self):
@@ -596,3 +608,9 @@ def debugPrint(msg):
         print "DEBUG: {}".format(msg)
 
 
+class qAppIcons:
+    """
+    Think of this like an enumeration for icons
+    """
+    TARGET = ":/plugins/NetworkProfiler/target.png"
+    EYE = ":/plugins/NetworkProfiler/eye.png"

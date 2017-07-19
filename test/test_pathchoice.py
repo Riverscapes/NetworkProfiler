@@ -42,7 +42,7 @@ class TestPathChoice(unittest.TestCase):
         self.profile.choice = Profile.CHOICE_FIELD_NOT_EMPTY
 
         self.profile.fieldname = "PathName2"
-        self.assertEqual(self.profile._chooseEdges(self.testchoices[1])[0].fid, 36)
+        self.assertEqual(self.profile._chooseEdges(self.testchoices[1])[0].fids[0], 36)
 
     def test_choose_field_value(self):
         """
@@ -52,13 +52,13 @@ class TestPathChoice(unittest.TestCase):
         self.profile.choice = Profile.CHOICE_FIELD_VALUE
         self.profile.fieldname = "PathName"
         self.profile.fieldval = "A"
-        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fid, 30)
+        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fids[0], 30)
 
         self.profile.fieldval = "B"
-        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fid, 32)
+        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fids[0], 32)
 
         self.profile.fieldval = "C"
-        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fid, 31)
+        self.assertEqual(self.profile._chooseEdges(self.testchoices[0])[0].fids[0], 31)
 
         # No Good Choice
         self.profile.fieldval = "D"
@@ -94,6 +94,17 @@ class TestPathChoice(unittest.TestCase):
         chosenpathC = self.profile._chooseEdges(self.testchoices[0])
         self.assertEqual(self.profile.getPathEdgeIds(chosenpathC), [30,32])
 
+    def test_wrongpath(self):
+        """
+        Test what happens when there's a good choice that leads to a bad place
+        :return:
+        """
+        self.profile.choice = Profile.CHOICE_FIELD_NOT_VALUE
+        self.profile.fieldname = "PathName"
+        self.profile.fieldval = "B"
+        self.profile.pathfinder(45, 37)
+
+        self.assertEqual(self.profile.getPathEdgeIds(self.profile.paths[0]), [45, 35, 36, 37])
 
 
 if __name__ == '__main__':

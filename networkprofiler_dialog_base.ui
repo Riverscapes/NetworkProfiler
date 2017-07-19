@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>450</width>
-    <height>595</height>
+    <width>483</width>
+    <height>572</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -79,15 +79,22 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnGrabFrom">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QToolButton" name="btnGrabFrom">
+            <property name="toolTip">
+             <string>Grab this feature from selections in the map</string>
             </property>
             <property name="text">
-             <string>Grab</string>
+             <string>G</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="btnFindFrom">
+            <property name="toolTip">
+             <string>Select this feature in the map</string>
+            </property>
+            <property name="text">
+             <string>F</string>
             </property>
            </widget>
           </item>
@@ -122,15 +129,22 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="btnGrabTo">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QToolButton" name="btnGrabTo">
+            <property name="toolTip">
+             <string>Grab this feature from selections in the map</string>
             </property>
             <property name="text">
-             <string>Grab</string>
+             <string>G</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="btnFindTo">
+            <property name="toolTip">
+             <string>Select this feature in the map</string>
+            </property>
+            <property name="text">
+             <string>F</string>
             </property>
            </widget>
           </item>
@@ -158,6 +172,9 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="toolTip">
+           <string>Reverse &quot;From&quot; and &quot;To&quot; ids</string>
+          </property>
           <property name="text">
            <string>Reverse</string>
           </property>
@@ -166,6 +183,8 @@
        </layout>
       </item>
      </layout>
+     <zorder>label</zorder>
+     <zorder></zorder>
     </widget>
    </item>
    <item>
@@ -242,6 +261,9 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="toolTip">
+           <string>The value to use for the accompanying field in this decision rule</string>
+          </property>
          </widget>
         </item>
        </layout>
@@ -262,6 +284,9 @@
           <width>0</width>
           <height>100</height>
          </size>
+        </property>
+        <property name="toolTip">
+         <string>The fields that will appear in your CSV file</string>
         </property>
         <property name="horizontalScrollBarPolicy">
          <enum>Qt::ScrollBarAlwaysOff</enum>
@@ -301,22 +326,6 @@
         </column>
        </widget>
       </item>
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="font">
-         <font>
-          <pointsize>11</pointsize>
-          <italic>true</italic>
-         </font>
-        </property>
-        <property name="text">
-         <string>Remember: select a unique ID field so you can identify points in your CSV file</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>
@@ -338,7 +347,7 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Help</set>
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Help|QDialogButtonBox::Reset</set>
        </property>
        <property name="centerButtons">
         <bool>false</bool>
@@ -347,8 +356,11 @@
      </item>
      <item>
       <widget class="QPushButton" name="btnCreateProfile">
+       <property name="toolTip">
+        <string>Create a Profile CSV and accompanying diagrams</string>
+       </property>
        <property name="text">
-        <string>Create Profile</string>
+        <string>Profile</string>
        </property>
       </widget>
      </item>

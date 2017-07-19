@@ -25,9 +25,26 @@ class TestWriteCSV(TestCase):
 
     def test_basic_write(self):
         # Test a single path. This is the simplest case
-        self.nxProfile.generateCSV('tmp_profile.csv', ['DateTime', 'Date', 'Time', 'RealField', 'IntField', 'StringFiel', 'PathName', 'PathName2'])
-        print "hi"
+        cols = ['DateTime', 'Date', 'Time', 'RealField', 'IntField', 'StringFiel', 'PathName', 'PathName2']
+        self.nxProfile.generateCSV(cols)
+        self.assertEqual(len(self.nxProfile.results), 3)
 
+        # Check that our keys have the same elements
+        icols = cols + self.nxProfile.calccols + [self.nxProfile.idField, 'Wkt']
+        rcols = self.nxProfile.results[0].keys()
+        self.assertTrue(all(c in icols for c in rcols))
+        self.assertTrue(all(c in rcols for c in icols))
+
+    def test_colsubset(self):
+        cols = ['PathName', 'PathName2']
+        self.nxProfile.generateCSV(cols)
+        self.assertEqual(len(self.nxProfile.results), 3)
+
+        # Check that our keys have the same elements
+        icols = cols + self.nxProfile.calccols + [self.nxProfile.idField, 'Wkt']
+        rcols = self.nxProfile.results[0].keys()
+        self.assertTrue(all(c in icols for c in rcols))
+        self.assertTrue(all(c in rcols for c in icols))
 
 
 

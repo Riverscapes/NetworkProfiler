@@ -254,7 +254,7 @@ class Profile():
             nextEdges = getNext(edges, newpath[-1])
 
         if len(nextEdges) == 0:
-            self.pathmsgs.append("Path found: {}. Path Length: {}".format(self.getPathEdgeIds(newpath), self._pathLength(newpath)) )
+            self.pathmsgs.append("Path found: {}. Path Length: {}".format(self.getPathEdgeIds(newpath), self._pathLength(newpath)))
             self.paths.append(newpath)
         else:
             chosenedges = self._chooseEdges(nextEdges)
@@ -400,13 +400,13 @@ class Profile():
         chosenarr = []
 
         if self.choice == Profile.CHOICE_FIELD_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] == self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] == self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] != self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] != self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_EMPTY:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids] and self.features[ed.fids][self.fieldname] != None and self.features[ed.fids][self.fieldname] != "", choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] != None and self.features[ed.fids[0]][self.fieldname] != "", choicearr)
 
         # If we couldn't make a decision just return everything
         if len(chosenarr) == 0:
