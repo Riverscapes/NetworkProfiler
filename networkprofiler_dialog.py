@@ -34,6 +34,7 @@ from NetworkProfiler.debug import Debugger
 from NetworkProfiler.profiler import Profile
 from NetworkProfiler.plot import Plots
 from NetworkProfiler.popupdialog import okDlg
+from NetworkProfiler.addtomap import addToMap
 
 
 HELP_URL = "https://github.com/Riverscapes/NetworkProfiler"
@@ -403,7 +404,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.theProfile = None
 
         try:
-            self.theProfile = Profile(selectedLayer, msgcallback=self.setFromToMsg)
+            if selectedLayer is not None:
+                self.theProfile = Profile(selectedLayer, msgcallback=self.setFromToMsg)
         except Exception as e:
             if self.theProfile is not None and self.theProfile.metalogs is not None:
                 detailstxt = "LOG:\n=====================\n  {0}\n\nException:\n=====================\n{1}".format("\n  ".join(self.theProfile.metalogs), str(e))
@@ -467,7 +469,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Now write to CSV
         try:
-            outputdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", os.path.expanduser("~"), QtGui.QFileDialog.ShowDirsOnly)
+            outputdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", "", QtGui.QFileDialog.ShowDirsOnly | QtGui.QFileDialog.DontResolveSymlinks)
 
             #TODO: if dir exists prompt for overwrite
             #TODO: if dir doesn't exist, create it.
@@ -504,6 +506,9 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
                 f.writelines(self.theProfile.metalogs)
                 f.write("Path:\n==========================================\n\n")
                 f.writelines(self.theProfile.pathmsgs)
+
+            selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+            addToMap(csvpath, selectedLayer)
 
             okDlg("Completed:", infoText="CSV file written: {}".format(csvpath))
 
@@ -561,6 +566,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
     def getMapVectorLayers(self):
         debugPrint("getMapVectorLayers")
         self.mapVectorLayers = [{'layer':layer} for layer in self.mapCanvas.layers() if type(layer) is QgsVectorLayer]
+
+
 
 
 def debugPrint(msg):
