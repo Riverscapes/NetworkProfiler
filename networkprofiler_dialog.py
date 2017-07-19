@@ -24,9 +24,11 @@ import os
 from PyQt4 import QtGui, uic
 import traceback
 import csv
+from datetime import datetime
 
 import qgis.utils
 from PyQt4.QtCore import QVariant, Qt, QUrl
+from PyQt4.QtGui import QDesktopServices
 from qgis.core import *
 from qgis.gui import *
 
@@ -469,20 +471,22 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Now write to CSV
         try:
-            outputdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", "", QtGui.QFileDialog.ShowDirsOnly | QtGui.QFileDialog.DontResolveSymlinks)
+            selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+            rootdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", "", QtGui.QFileDialog.ShowDirsOnly | QtGui.QFileDialog.DontResolveSymlinks)
 
-            #TODO: if dir exists prompt for overwrite
-            #TODO: if dir doesn't exist, create it.
-
-            # TODO: Output log file
             # - Details about when this was run. Inputs and outputs
             # - Details about the traversal.
-
+            foldername = "Profile-{}-{}to{}".format(selectedLayer.name(), self.appFromID, self.appToID)
+            outputdir = os.path.join(rootdir, foldername)
             csvpath = os.path.join(outputdir, "profile.csv")
             logpath = os.path.join(outputdir, "profile.log")
             plotspath = os.path.join(outputdir, "plots")
 
-            self.theProfile.generateCSV(csvpath, cols)
+            # The plotspath is the deepest so it's the only mkdir I need to call for now
+            if not os.path.isdir(plotspath):
+                os.makedirs(plotspath)
+
+            self.theProfile.generateCSV(cols)
 
             with open(csvpath, 'wb') as f:
 
@@ -492,25 +496,36 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
             debugPrint("Done Writing CSV")
 
-            if not os.path.isdir(plotspath):
-                os.makedirs(plotspath)
-
             plots = Plots(self.theProfile, plotspath)
             plots.createPlots()
 
             # Write a file with some information about what just happened
             with open(logpath, 'w') as f:
                 f.write("Inputs:\n==========================================\n\n")
+                f.write(" DateTime: {}\n".format(datetime.now().replace(microsecond=0).isoformat()))
+                f.write("LayerName: {}\n".format(selectedLayer.name()))
+                f.write("   FromID: {}\n".format(self.appFromID))
+                f.write("     ToID: {}\n".format(self.appToID))
+                listsep = "\n     - "
+                f.write("   Fields: {}{}\n".format(listsep, listsep.join(cols)))
 
-                f.write("Profile:\n==========================================\n\n")
-                f.writelines(self.theProfile.metalogs)
-                f.write("Path:\n==========================================\n\n")
+                f.write("\n\nPath:\n==========================================\n\n")
                 f.writelines(self.theProfile.pathmsgs)
 
-            selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
-            addToMap(csvpath, selectedLayer)
+                f.write("\n\nProfile:\n==========================================\n\n")
+                f.writelines(self.theProfile.metalogs)
+
+
+
+
+
+            if self.chkAddToMap.isChecked():
+                addToMap(csvpath, selectedLayer)
 
             okDlg("Completed:", infoText="CSV file written: {}".format(csvpath))
+
+            qurl = QUrl.fromLocalFile(outputdir)
+            QDesktopServices.openUrl(qurl)
 
         except Exception as e:
             traceback.print_exc()

@@ -115,6 +115,7 @@ class Profile():
         :return:
         """
         self.paths = []
+        self.pathmsgs = []
         self.toEdges = []
         self.fromEdge = None
         self.reversible = False
@@ -149,6 +150,7 @@ class Profile():
                     self.reversible = True
             except Exception, e:
                 pass
+
 
     def _prepareEdges(self, rawedges):
         """
@@ -252,6 +254,7 @@ class Profile():
             nextEdges = getNext(edges, newpath[-1])
 
         if len(nextEdges) == 0:
+            self.pathmsgs.append("Path found: {}. Path Length: {}".format(self.getPathEdgeIds(newpath), self._pathLength(newpath)) )
             self.paths.append(newpath)
         else:
             chosenedges = self._chooseEdges(nextEdges)
@@ -330,17 +333,18 @@ class Profile():
     def logError(self, msg):
         if self.msgcallback:
             self.msgcallback(msg, color="red")
-        self.logmsgs.append("[ERROR]" + msg)
+        self.metalogs.append("[ERROR]" + msg)
         self.logger.error(msg)
 
 
-    def generateCSV(self, filename, cols=None):
+    def generateCSV(self, cols=None):
         """
         Separate out the writer so we can test without writing files
         :param outdict:
         :param csv:
         :return:
         """
+        self.metalogs.append("{} possible paths found based on ruleset. Choosing the shortest of these.".format(len(self.paths)))
 
         chosenpath = self._choosebylength()
         # Now we have to chose just one path out of the ones we have
@@ -354,6 +358,7 @@ class Profile():
         if len(cols) > 0:
             for col in cols:
                 if col not in self.cols:
+                    self.log
                     self.logError("WARNING: Could not find column '{}' in shapefile".format(col))
                 else:
                     includedShpCols.append(col)
@@ -446,7 +451,7 @@ class Profile():
         return sorted(self.paths, key=self._pathLength)[0]
 
     def _segLength(self, fid):
-        return wkb.loads(self.features[fid]['Wkb']).length
+        return self.features[fid]['_calc_length_']
 
     def _pathLength(self, pathArr):
         return sum([self._segLength(x.fids[0]) for x in pathArr])

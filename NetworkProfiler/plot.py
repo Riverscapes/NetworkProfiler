@@ -13,8 +13,9 @@ class Plots():
 
     def createPlots(self):
         for col in self.profile.csvkeys:
-            filename = path.join(self.outputdir, "Plot_{}_km.png".format(col))
-            self.plotit(col, filename)
+            if col not in ['ProfileCummulativeLength', '_FID_', '']:
+                filename = path.join(self.outputdir, "Plot_{}_km.png".format(col))
+                self.plotit(col, filename)
 
 
     def plotit(self, colname, filename):

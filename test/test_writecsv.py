@@ -25,7 +25,7 @@ class TestWriteCSV(TestCase):
 
     def test_basic_write(self):
         # Test a single path. This is the simplest case
-        self.nxProfile.writeCSV('tmp_profile.csv', ['DateTime', 'Date', 'Time', 'RealField', 'IntField', 'StringFiel', 'PathName', 'PathName2'])
+        self.nxProfile.generateCSV('tmp_profile.csv', ['DateTime', 'Date', 'Time', 'RealField', 'IntField', 'StringFiel', 'PathName', 'PathName2'])
         print "hi"
 
 
