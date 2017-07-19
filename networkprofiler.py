@@ -28,6 +28,7 @@ from PyQt4.QtGui import QAction, QIcon
 # Initialize Qt resources from file resources.py
 # Import the code for the dialog
 from networkprofiler_dialog import NetworkProfilerDialog
+import resources
 
 
 class NetworkProfiler:
@@ -72,8 +73,8 @@ class NetworkProfiler:
         self.actions = []
         self.menu = self.tr(u'&Network Profiler')
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'networkProfiler')
-        self.toolbar.setObjectName(u'networkProfiler')
+        self.toolbar = self.iface.addToolBar(u'Network Profiler')
+        self.toolbar.setObjectName(u'Network Profiler')
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -170,7 +171,7 @@ class NetworkProfiler:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/NetworkProfiler/icons/icon.png'
+        icon_path = ':/plugins/NetworkProfiler/icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'Network Profiler'),

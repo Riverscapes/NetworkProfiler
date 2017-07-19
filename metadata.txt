@@ -23,7 +23,7 @@ repository=https://github.com/Riverscapes/NetworkProfiler
 # Recommended items:
 
 # Uncomment the following line and add your changelog:
-# changelog=
+# changelog=https://github.com/Riverscapes/NetworkProfiler/blob/master/CHANGELOG.txt
 
 # Tags are comma separated with spaces allowed
 tags=network,profiler,riverscapes
@@ -32,7 +32,7 @@ homepage=http://riverscapes.northarrowresearch.com/
 category=Vector
 icon=icons/icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False

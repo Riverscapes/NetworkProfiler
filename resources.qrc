@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/plugins/NetworkProfiler" >
-        <file alias="icon.png">icon.png</file>
-        <file alias="target.png">icons/icomoon-free_2014-12-23_target_12_0_000000_none</file>
+        <file alias="icon.png">icons/icon.png</file>
+        <file alias="target.png">icons/icomoon-free_2014-12-23_target_12_0_000000_none.png</file>
         <file alias="eye.png">icons/font-awesome_4-7-0_eye_12_0_000000_none.png</file>
     </qresource>
 </RCC>
