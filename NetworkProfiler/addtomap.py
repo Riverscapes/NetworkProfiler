@@ -1,10 +1,13 @@
-from PyQt4.QtGui import QColor
+﻿from PyQt4.QtGui import QColor
 from qgis.core import QgsVectorLayer, QgsMapLayerRegistry, QgsSymbolV2, QgsSingleSymbolRendererV2, QgsSimpleLineSymbolLayerV2
 import random
 import colorsys
 
 
 def addToMap(csvfile, selectedLayer):
+    # A little windows path trickery
+    if csvfile[0] is not "/":
+        csvfile = "/" + csvfile
 
     uri = "file://{0}?delimiter={1}&crs={2}&wktField={3}".format(csvfile,",", selectedLayer.crs().authid(), "Wkt")
     rOutput = QgsVectorLayer(uri, "ProfileLayer_{}".format(selectedLayer.name()), "delimitedtext")
@@ -18,8 +21,6 @@ def random_color():
     return QColor(r,g,b,150)
 
 def symbolize(layer, oldlayer):
-    provider = layer.dataProvider()
-    extent = layer.extent()
     renderer = None
 
     # See if we can figure out ho thick the line is to begin with:
@@ -31,6 +32,7 @@ def symbolize(layer, oldlayer):
     symbol_layer = QgsSimpleLineSymbolLayerV2(random_color(), 2.0)
 
     # assign the symbol layer to the symbol
+    # TODO: on windows:::  'NoneType' object has no attribute 'appendSymbolLayer'
     renderer.symbol().appendSymbolLayer(symbol_layer)
 
     # assign the renderer to the layer
