@@ -5,6 +5,7 @@ NEWVERSION=$1
 sed -i -- "s/^version=.*/version=${NEWVERSION}/g" metadata.txt
 
 git checkout master
+rm metadata.txt--
 git add metadata.txt
 git commit -m "Upgrading to version: $NEWVERSION"
 git tag $NEWVERSION

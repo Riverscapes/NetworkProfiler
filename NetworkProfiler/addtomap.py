@@ -2,6 +2,7 @@
 from qgis.core import QgsVectorLayer, QgsMapLayerRegistry, QgsSymbolV2, QgsSingleSymbolRendererV2, QgsSimpleLineSymbolLayerV2
 import random
 import colorsys
+from qgis.utils import iface
 
 
 def addToMap(csvfile, selectedLayer):
@@ -14,6 +15,11 @@ def addToMap(csvfile, selectedLayer):
 
     symbolize(rOutput, selectedLayer)
     QgsMapLayerRegistry.instance().addMapLayer(rOutput)
+
+    # Make sure this doesn't change the active layer selection
+    iface.setActiveLayer(selectedLayer)
+
+
 
 def random_color():
     h, s, l = random.random(), 0.5 + random.random() / 2.0, 0.4 + random.random() / 5.0

@@ -278,16 +278,26 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         Rebuild the vector layers combo box and reset the selected item if necessary
         """
         debugPrint( "recalcVectorLayers")
+
+        # Store the current layer so we can look it up later
+        currLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
+
         self.cmbLayer.clear()
+
         self.cmbLayer.currentIndexChanged.disconnect(self.cmbLayerChange)
         for layerObj in self.mapVectorLayers:
             self.cmbLayer.addItem(layerObj['layer'].name(), layerObj['layer'])
         self.cmbLayer.currentIndexChanged.connect(self.cmbLayerChange)
 
         idx = self.cmbLayer.currentIndex()
-        if idx > 0:
-            self.appVectorLayer = self.cmbLayer.itemData(idx)
-            # if not in list then self.appVectorLayer = None
+
+        # If something was already selected see if it's still there.
+        if currLayer is not None:
+            selMapLayerIndex = self.cmbLayer.findData(currLayer)
+            if selMapLayerIndex >= 0:
+                self.cmbLayer.setCurrentIndex(selMapLayerIndex)
+            else:
+                self.setAppVectorLayerFromMap()
         else:
             self.setAppVectorLayerFromMap()
 
