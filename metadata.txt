@@ -10,7 +10,7 @@
 name=NetworkProfiler
 qgisMinimumVersion=2.0
 description=Scrape ShapeFile Attributees From a River Network ShapeFile
-version=0.5
+version=0.6
 author=North Arrow Research Ltd.
 email=info@northarrowresearch.com
 
