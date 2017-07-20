@@ -12,6 +12,9 @@ $(document).ready(function (){
 	function treeize(pages){
 		var t = { leaves: [], branches: [] }
 		for (i in pages) {
+			// Only care about HTML pages
+			if (pages[i].url.indexOf(".htm") == -1) continue
+
 			urlArr = pages[i].url.split('/');
 			currLevel = urlArr.shift();
 			var pointer = t;
@@ -19,6 +22,7 @@ $(document).ready(function (){
 			// Now loop until we're deep enough
 			while (urlArr.length > 1) {
 				key = urlArr[0].length == 0 ? "EMPTY" : urlArr[0];
+				key = key.replace("_"," ").replace("%20", " ");
 				var newDir;
 				if (key in pointer.branches){
 					newDir = pointer.branches[key];
