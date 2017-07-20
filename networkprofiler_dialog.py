@@ -539,6 +539,9 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
             selectedLayer = self.cmbLayer.itemData(self.cmbLayer.currentIndex())
             rootdir = QtGui.QFileDialog.getExistingDirectory(self, "Specify output folder", "", QtGui.QFileDialog.ShowDirsOnly | QtGui.QFileDialog.DontResolveSymlinks)
 
+            if rootdir == "" or not os.path.isdir(rootdir):
+                return
+
             # - Details about when this was run. Inputs and outputs
             # - Details about the traversal.
             foldername = "Profile-{}-{}to{}".format(selectedLayer.name(), self.appFromID, self.appToID)

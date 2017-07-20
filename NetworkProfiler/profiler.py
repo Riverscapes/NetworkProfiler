@@ -5,6 +5,7 @@ import copy
 from qgis.core import *
 import logging
 from collections import namedtuple
+from PyQt4.QtCore import QDate, QDateTime
 from shapely import wkb
 
 
@@ -378,7 +379,10 @@ class Profile():
             # Only some of the fields get included
             for key in self.cols:
                 if key in includedShpCols:
-                    csvDict[key] = self.features[fid][key]
+                    if type(self.features[fid][key]) in [QDate, QDateTime]:
+                        csvDict[key] = self.features[fid][key].toPyDate().isoformat()
+                    else:
+                        csvDict[key] = self.features[fid][key]
 
             # Everything calculated gets included
             for key, val in calcfields[fid].iteritems():
