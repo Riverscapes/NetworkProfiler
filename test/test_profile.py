@@ -83,7 +83,7 @@ class TestProfiler(unittest.TestCase):
 
         # Double Path
         self.nxProfile.pathfinder(22, 28)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22, 23, 26, 27, 28], [22, 24, 25, 27, 28]])
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22, 24, 25, 27, 28], [22, 23, 26, 27, 28]])
 
         # Triple Path
         self.nxProfile.pathfinder(29, 34)
@@ -111,11 +111,11 @@ class TestProfiler(unittest.TestCase):
 
         # Test "find outflow" with multiple paths
         self.nxProfile.pathfinder(22)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22,23,26,27,28],[22,24,25,27,28]])
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[22,24,25,27,28],[22,23,26,27,28]])
 
         # Test "find outflow" with multiple outflows
         self.nxProfile.pathfinder(45)
-        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[45,35,36,37],[45,35,38,39]])
+        self.assertListEqual(self.nxProfile.getPathEdgeIds(), [[45,35,38,39],[45,35,36,37]])
 
 
     def test_reverse_pathfinder(self):

@@ -36,13 +36,13 @@ class Profile():
         self.idField = "_FID_"
         self.metalogs = []
         self.pathmsgs = []
+        self.G = None
 
         self.paths = []
 
         self.fromEdge = None
         self.toEdges = []
 
-        self.features = {}
         self.cols = []
         self.calccols = []
         self.csvkeys = []
@@ -223,13 +223,15 @@ class Profile():
             attributes[self.idField] = fid
             attributes['_calc_length_'] = geo.length()
 
+            self.cols = None
             # Note:  Using layer level geometry type
             if geo.wkbType() in (QgsWKBTypes.LineString, QgsWKBTypes.MultiLineString):
                 for edge in self.edges_from_line(geo, attributes, simplify, geom_attrs):
                     e1, e2, attr = edge
-                    self.features[fid] = attr
-                    self.G.add_edge(e1, e2, key=attr[self.idField])
-                self.cols = self.features[self.features.keys()[0]].keys()
+                    if self.cols is None:
+                        self.cols = attr.keys()
+                    self.G.add_edge(tuple(e1), tuple(e2), key=attr[self.idField], attr_dict=attr)
+
             else:
                 raise ImportError("GeometryType {} not supported. For now we only support LineString types.".
                                   format(QgsWKBTypes.displayString(int(geo.wkbType()))))
@@ -313,11 +315,11 @@ class Profile():
         """
         # [self.G.get_edge_data(*np) for np in self.G.edges_iter()]
         foundEdge = None
-        for np in self.G.edges_iter():
-            keys = self.G.get_edge_data(*np).keys()
+        for edg in self.G.edges_iter():
+            keys = self.G.get_edge_data(*edg).keys()
             if id in keys:
                 # EdgeObj = namedtuple('EdgeObj', ['EdgeTuple', 'fid'], verbose=True)
-                foundEdge = EdgeObj(np, [id])
+                foundEdge = EdgeObj(edg, [id])
                 break
 
             if foundEdge is not None:
@@ -359,7 +361,6 @@ class Profile():
         if len(cols) > 0:
             for col in cols:
                 if col not in self.cols:
-                    self.log
                     self.logError("WARNING: Could not find column '{}' in shapefile".format(col))
                 else:
                     includedShpCols.append(col)
@@ -373,16 +374,18 @@ class Profile():
 
             # The ID field is not optional
             csvDict[self.idField] = fid
+            edgetuple = self.getEdgeByFID(fid)
 
-            csvDict["Wkt"] = self.features[fid]['Wkt']
+            attrs = self.G.get_edge_data(*edgetuple)
+            csvDict["Wkt"] = attrs['Wkt']
 
             # Only some of the fields get included
             for key in self.cols:
                 if key in includedShpCols:
-                    if type(self.features[fid][key]) in [QDate, QDateTime]:
-                        csvDict[key] = self.features[fid][key].toPyDate().isoformat()
+                    if type(attrs[key]) in [QDate, QDateTime]:
+                        csvDict[key] = attrs[key].toPyDate().isoformat()
                     else:
-                        csvDict[key] = self.features[fid][key]
+                        csvDict[key] = attrs[key]
 
             # Everything calculated gets included
             for key, val in calcfields[fid].iteritems():
@@ -402,15 +405,16 @@ class Profile():
         """
 
         chosenarr = []
+        attrsdict = {edgeObj.fids[0]: self.G.get_edge_data(edgeObj.edge[0], edgeObj.edge[1], edgeObj.fids[0]) for edgeObj in choicearr}
 
         if self.choice == Profile.CHOICE_FIELD_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] == self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in attrsdict[ed.fids[0]] and attrsdict[ed.fids[0]][self.fieldname] == self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_VALUE:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] != self.fieldval, choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in attrsdict[ed.fids[0]] and attrsdict[ed.fids[0]][self.fieldname] != self.fieldval, choicearr)
 
         elif self.choice == Profile.CHOICE_FIELD_NOT_EMPTY:
-            chosenarr = filter(lambda ed: self.fieldname in self.features[ed.fids[0]] and self.features[ed.fids[0]][self.fieldname] != None and self.features[ed.fids[0]][self.fieldname] != "", choicearr)
+            chosenarr = filter(lambda ed: self.fieldname in attrsdict[ed.fids[0]] and attrsdict[ed.fids[0]][self.fieldname] != None and attrsdict[ed.fids[0]][self.fieldname] != "", choicearr)
 
         # If we couldn't make a decision just return everything
         if len(chosenarr) == 0:
@@ -454,8 +458,21 @@ class Profile():
         # Return the top item (shortest) when sorting by length
         return sorted(self.paths, key=self._pathLength)[0]
 
+    def getEdgeByFID(self, fid):
+        '''Call the query for each edge, return list of matches'''
+        result = []
+        for u, v, key in self.G.edges(keys=True):
+            if key == fid:
+                return u,v,key
+        return None
+
     def _segLength(self, fid):
-        return self.features[fid]['_calc_length_']
+        edgetuple = self.getEdgeByFID(fid)
+        if edgetuple is not None:
+            attrs = self.G.get_edge_data(*edgetuple)
+            return attrs['_calc_length_']
+        else:
+            return None
 
     def _pathLength(self, pathArr):
         return sum([self._segLength(x.fids[0]) for x in pathArr])
