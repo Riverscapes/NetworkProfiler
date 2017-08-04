@@ -78,7 +78,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
 
         # Set icons
 
-
         # Braid choices are constant
         self.cmbPathChoose.clear()
         self.cmbPathChoose.addItem(Profile.CHOICE_SHORTEST)
@@ -99,6 +98,7 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         self.btnGrabFrom.clicked.connect(self.grabFrom)
         self.btnGrabTo.clicked.connect(self.grabTo)
         self.btnFlipFromTo.clicked.connect(self.flipFromTo)
+        self.btnFromToCalc.clicked.connect(self.runProfile)
 
         self.btnFindFrom.clicked.connect(self.findFrom)
         self.btnFindTo.clicked.connect(self.findTo)
@@ -187,9 +187,8 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         else:
             self.appFromID = self.mapSelectedObjects[0][0].id()
             self.appFromObj = self.mapSelectedObjects[0]
-
-            self.runProfile()
             self.stateUpdate()
+
 
     def grabTo(self):
         debugPrint("grabTo")
@@ -199,7 +198,6 @@ class NetworkProfilerDialog(QtGui.QDialog, FORM_CLASS):
         else:
             self.appToID = self.mapSelectedObjects[0][0].id()
             self.appToObj = self.mapSelectedObjects[0]
-            self.runProfile()
             self.stateUpdate()
 
     def findFrom(self):

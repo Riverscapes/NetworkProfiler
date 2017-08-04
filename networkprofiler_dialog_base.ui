@@ -153,17 +153,17 @@
        </layout>
       </item>
       <item>
+       <widget class="QLabel" name="lblFromToStatus">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <layout class="QHBoxLayout" name="horizontalLayout_7">
-        <item>
-         <widget class="QLabel" name="lblFromToStatus">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item>
          <widget class="QPushButton" name="btnFlipFromTo">
           <property name="sizePolicy">
@@ -180,11 +180,19 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QPushButton" name="btnFromToCalc">
+          <property name="text">
+           <string>Find Paths</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
      <zorder>label</zorder>
      <zorder></zorder>
+     <zorder>lblFromToStatus</zorder>
     </widget>
    </item>
    <item>
